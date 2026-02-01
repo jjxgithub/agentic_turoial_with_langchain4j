@@ -43,6 +43,7 @@ public class OllamaConfig {
                 .baseUrl(ollamaBaseUrl)
                 .modelName(ollamaModel)
                 .timeout(Duration.ofSeconds(timeoutSeconds))
+                .temperature(0D)
 //                .logRequests(true)
 //                .logResponses(true)
                 .build();

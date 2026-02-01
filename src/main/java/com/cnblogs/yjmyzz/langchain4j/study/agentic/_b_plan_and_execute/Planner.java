@@ -32,10 +32,14 @@ public interface Planner {
            5. calculateCuboidVolume - 计算长方体体积
            6. multiply - 两数相乘
            7. divide - 两数相除
+           8. queryExpressOrder - 查询快递单
+           9. queryRefundProgress - 查询退款进度
           """)
     @UserMessage("问：{{request}}")
     @Agent("基于用户提供的问题生成计划")
     String createPlan(@V("request") String request);
+}
+
 
 //    @SystemMessage("""
 //           你是一个任务规划专家。请将用户的任务分解为详细的执行步骤。
@@ -59,4 +63,3 @@ public interface Planner {
 //    @UserMessage("问：{{request}}")
 //    @Agent("基于用户提供的问题生成计划")
 //    String createPlan(@V("request") String request);
-}

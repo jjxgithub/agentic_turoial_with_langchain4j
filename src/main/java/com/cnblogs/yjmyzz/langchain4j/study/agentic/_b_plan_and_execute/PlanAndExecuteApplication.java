@@ -18,21 +18,21 @@ import java.util.Map;
 
 /**
  * PlanAndExecute模式演示应用程序
- * 
+ * <p>
  * 这个应用程序演示了AI智能体中的Plan-and-Execute（规划并执行）设计模式。
  * 该模式将复杂任务分解为两个阶段：
  * 1. 规划阶段（Planning）：将用户任务分解为一系列具体的执行步骤
  * 2. 执行阶段（Executing）：按顺序执行规划好的步骤
- * 
+ * <p>
  * 核心组件：
  * - Planner：负责将复杂任务分解为具体的执行步骤
  * - Executor：负责按步骤执行任务
  * - Coordinator：协调规划和执行过程，并管理上下文信息
- * 
+ * <p>
  * 应用场景：
  * 适用于需要多步推理和工具调用的复杂任务，如数学计算、天气查询、
  * 时间获取等需要多个步骤才能完成的任务。
- * 
+ *
  * @author junmingyang
  */
 @SpringBootApplication
@@ -49,7 +49,9 @@ public class PlanAndExecuteApplication {
                 "计算半径为5的圆的面积",
                 "现在是几点？",
                 "计算长方体的体积，长10，宽5，高3",
-                "帮我算一下 (25 × 4) ÷ 2 等于多少？"
+                "帮我算一下 (25 × 4) ÷ 2 等于多少？",
+                "快递单123456,现在到哪了？",
+                "我的订单56789,退款到账了没？"
         };
 
         Coordinator coordinator = new Coordinator(model, sampleTools);

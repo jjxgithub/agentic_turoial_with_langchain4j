@@ -74,4 +74,20 @@ public class SampleTools {
         return String.format("长 %.2f、宽 %.2f、高 %.2f 的长方体体积是 %.2f",
                 length, width, height, volume);
     }
+
+    @Tool("查询快递单")
+    public String queryExpressOrder(String expressOrderNo) {
+        System.out.printf("[工具调用] 快递单: %s，已经在运输途中，预订明天送达\n",
+                expressOrderNo);
+        return String.format("[工具调用] 快递单: %s，已经在运输途中，预订明天送达\n",
+                expressOrderNo);
+    }
+
+    @Tool("查询退款进度")
+    public String queryRefundProgress(String orderNo) {
+        System.out.printf("[工具调用] 订单: %s，退款已审批通过，预计1-3个工作日按原路退回\n",
+                orderNo);
+        return String.format("[工具调用] 订单: %s，退款已审批通过，预计1-3个工作日按原路退回\n",
+                orderNo);
+    }
 }
