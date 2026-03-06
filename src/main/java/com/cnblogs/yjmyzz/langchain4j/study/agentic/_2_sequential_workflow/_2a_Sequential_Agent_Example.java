@@ -2,6 +2,7 @@ package com.cnblogs.yjmyzz.langchain4j.study.agentic._2_sequential_workflow;
 
 import com.cnblogs.yjmyzz.langchain4j.study.AgentDesignPatternApplication;
 import com.cnblogs.yjmyzz.langchain4j.study.agentic._1_basic_agent.CvGenerator;
+import com.cnblogs.yjmyzz.langchain4j.study.config.OpenAiConfig;
 import com.cnblogs.yjmyzz.langchain4j.study.util.StringLoader;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;
@@ -26,8 +27,8 @@ import java.util.Map;
 public class _2a_Sequential_Agent_Example {
 
     public static void main(String[] args) throws IOException {
-        ConfigurableApplicationContext context = SpringApplication.run(AgentDesignPatternApplication.class, args);
-        ChatModel model = context.getBean("ollamaChatModel", ChatModel.class);
+        ChatModel model = OpenAiConfig.chatModel();
+
 
 
         CvGenerator cvGenerator = AgenticServices

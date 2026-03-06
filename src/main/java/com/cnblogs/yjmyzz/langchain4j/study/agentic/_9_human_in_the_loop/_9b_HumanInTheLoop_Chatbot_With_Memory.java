@@ -1,6 +1,7 @@
 package com.cnblogs.yjmyzz.langchain4j.study.agentic._9_human_in_the_loop;
 
 import com.cnblogs.yjmyzz.langchain4j.study.AgentDesignPatternApplication;
+import com.cnblogs.yjmyzz.langchain4j.study.config.OpenAiConfig;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.workflow.HumanInTheLoop;
@@ -25,8 +26,8 @@ public class _9b_HumanInTheLoop_Chatbot_With_Memory {
 
     public static void main(String[] args) {
 
-        ConfigurableApplicationContext context = SpringApplication.run(AgentDesignPatternApplication.class, args);
-        ChatModel model = context.getBean("ollamaChatModel", ChatModel.class);
+        ChatModel model = OpenAiConfig.chatModel();
+
 
         // 1. 定义子智能体
         MeetingProposer proposer = AgenticServices

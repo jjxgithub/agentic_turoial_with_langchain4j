@@ -1,6 +1,7 @@
 package com.cnblogs.yjmyzz.langchain4j.study.agentic._1_basic_agent;
 
 import com.cnblogs.yjmyzz.langchain4j.study.AgentDesignPatternApplication;
+import com.cnblogs.yjmyzz.langchain4j.study.config.OpenAiConfig;
 import com.cnblogs.yjmyzz.langchain4j.study.util.StringLoader;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.model.chat.ChatModel;
@@ -23,8 +24,7 @@ import java.io.IOException;
 public class _1a_Basic_Agent_Example {
 
     public static void main(String[] args) throws IOException {
-        ConfigurableApplicationContext context = SpringApplication.run(AgentDesignPatternApplication.class, args);
-        ChatModel model = context.getBean("ollamaChatModel", ChatModel.class);
+        ChatModel model = OpenAiConfig.chatModel();
 
         CvGenerator cvGenerator = AgenticServices
                 .agentBuilder(CvGenerator.class)

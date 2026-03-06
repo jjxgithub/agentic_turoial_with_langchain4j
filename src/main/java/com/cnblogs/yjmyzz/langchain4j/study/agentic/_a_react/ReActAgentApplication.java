@@ -1,6 +1,7 @@
 package com.cnblogs.yjmyzz.langchain4j.study.agentic._a_react;
 
 import com.cnblogs.yjmyzz.langchain4j.study.AgentDesignPatternApplication;
+import com.cnblogs.yjmyzz.langchain4j.study.config.OpenAiConfig;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
@@ -67,7 +68,8 @@ public class ReActAgentApplication {
 
     public static void main(String[] args) throws IOException {
         ConfigurableApplicationContext context = SpringApplication.run(AgentDesignPatternApplication.class, args);
-        ChatModel model = context.getBean("ollamaChatModel", ChatModel.class);
+        ChatModel model = OpenAiConfig.chatModel();
+
         SampleTools sampleTools = context.getBean("sampleTools", SampleTools.class);
 
         ReActAssistant agent = AgenticServices

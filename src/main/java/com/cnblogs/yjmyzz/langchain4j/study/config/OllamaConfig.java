@@ -49,15 +49,15 @@ public class OllamaConfig {
                 .build();
     }
 
-    @Bean("ollamaEmbeddingModel")
-    public OllamaEmbeddingModel embeddingModel() {
-        return OllamaEmbeddingModel.builder()
-                .baseUrl(ollamaBaseUrl)
-                .modelName(embeddingModel)
-                .timeout(Duration.ofSeconds(timeoutSeconds))
-                .logRequests(true)
-                .logResponses(true)
-                .build();
-    }
+//    @Bean("ollamaEmbeddingModel")
+//    public OllamaEmbeddingModel embeddingModel() {
+//        return OllamaEmbeddingModel.builder()
+//                .baseUrl(ollamaBaseUrl)
+//                .modelName(embeddingModel)
+//                .timeout(Duration.ofSeconds(timeoutSeconds))
+//                .logRequests(true)
+//                .logResponses(true)
+//                .build();
+//    }
 
 }

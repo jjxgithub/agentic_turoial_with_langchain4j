@@ -3,6 +3,7 @@ package com.cnblogs.yjmyzz.langchain4j.study.agentic._b_plan_and_execute;
 import com.cnblogs.yjmyzz.langchain4j.study.AgentDesignPatternApplication;
 import com.cnblogs.yjmyzz.langchain4j.study.agentic._a_react.ReActAssistant;
 import com.cnblogs.yjmyzz.langchain4j.study.agentic._a_react.SampleTools;
+import com.cnblogs.yjmyzz.langchain4j.study.config.OpenAiConfig;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
@@ -39,8 +40,8 @@ import java.util.Map;
 public class PlanAndExecuteApplication {
 
     public static void main(String[] args) throws IOException {
+        ChatModel model = OpenAiConfig.chatModel();
         ConfigurableApplicationContext context = SpringApplication.run(AgentDesignPatternApplication.class, args);
-        ChatModel model = context.getBean("ollamaChatModel", ChatModel.class);
         SampleTools sampleTools = context.getBean("sampleTools", SampleTools.class);
 
         String[] testTasks = {
