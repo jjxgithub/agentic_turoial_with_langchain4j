@@ -1,5 +1,6 @@
 package com.cnblogs.yjmyzz.langchain4j.study;
 
+import com.cnblogs.yjmyzz.langchain4j.study.config.OpenAiConfig;
 import dev.langchain4j.chain.Chain;
 import dev.langchain4j.chain.ConversationalChain;
 import dev.langchain4j.model.chat.ChatModel;
@@ -18,7 +19,7 @@ public class AgentDesignPatternApplication {
 
     public static void main(String[] args) {
         ConfigurableApplicationContext context = SpringApplication.run(AgentDesignPatternApplication.class, args);
-        ChatModel model = context.getBean("ollamaChatModel", ChatModel.class);
+        ChatModel model = OpenAiConfig.chatModel();
         promptChain(model);
     }
 

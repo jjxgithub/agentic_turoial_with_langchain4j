@@ -2,6 +2,7 @@
 package com.cnblogs.yjmyzz.langchain4j.study.agentic._3_loop_workflow;
 
 import com.cnblogs.yjmyzz.langchain4j.study.AgentDesignPatternApplication;
+import com.cnblogs.yjmyzz.langchain4j.study.config.OpenAiConfig;
 import com.cnblogs.yjmyzz.langchain4j.study.domain.CvReview;
 import com.cnblogs.yjmyzz.langchain4j.study.util.StringLoader;
 import dev.langchain4j.agentic.AgenticServices;
@@ -30,7 +31,7 @@ public class _3a_Loop_Agent_Example_States_And_Fail {
 
     public static void main(String[] args) throws IOException {
         ConfigurableApplicationContext context = SpringApplication.run(AgentDesignPatternApplication.class, args);
-        ChatModel model = context.getBean("ollamaChatModel", ChatModel.class);
+        ChatModel model = OpenAiConfig.chatModel();
 
         CvReviewer cvReviewer = AgenticServices.agentBuilder(CvReviewer.class)
                 .chatModel(model)

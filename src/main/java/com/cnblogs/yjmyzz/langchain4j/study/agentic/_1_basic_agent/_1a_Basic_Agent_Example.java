@@ -1,13 +1,10 @@
 package com.cnblogs.yjmyzz.langchain4j.study.agentic._1_basic_agent;
 
-import com.cnblogs.yjmyzz.langchain4j.study.AgentDesignPatternApplication;
 import com.cnblogs.yjmyzz.langchain4j.study.config.OpenAiConfig;
 import com.cnblogs.yjmyzz.langchain4j.study.util.StringLoader;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.model.chat.ChatModel;
-import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.context.ConfigurableApplicationContext;
 
 import java.io.IOException;
 

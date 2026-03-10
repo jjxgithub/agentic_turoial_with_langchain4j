@@ -1,6 +1,7 @@
 package com.cnblogs.yjmyzz.langchain4j.study.agentic._5_conditional_workflow;
 
 import com.cnblogs.yjmyzz.langchain4j.study.AgentDesignPatternApplication;
+import com.cnblogs.yjmyzz.langchain4j.study.config.OpenAiConfig;
 import com.cnblogs.yjmyzz.langchain4j.study.domain.CvReview;
 import com.cnblogs.yjmyzz.langchain4j.study.util.StringLoader;
 import dev.langchain4j.agentic.AgenticServices;
@@ -26,7 +27,7 @@ public class _5a_Conditional_Workflow_Example {
 
     public static void main(String[] args) throws IOException {
         ConfigurableApplicationContext context = SpringApplication.run(AgentDesignPatternApplication.class, args);
-        ChatModel model = context.getBean("ollamaChatModel", ChatModel.class);
+        ChatModel model = OpenAiConfig.chatModel();
         RagProvider ragProvider = context.getBean("ragProvider", RagProvider.class);
 
         // 2. 在此包中定义两个子智能体：

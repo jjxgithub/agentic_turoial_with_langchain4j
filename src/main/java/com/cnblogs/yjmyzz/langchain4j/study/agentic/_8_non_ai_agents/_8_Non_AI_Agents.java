@@ -5,6 +5,7 @@ import com.cnblogs.yjmyzz.langchain4j.study.AgentDesignPatternApplication;
 import com.cnblogs.yjmyzz.langchain4j.study.agentic._4_parallel_workflow.HrCvReviewer;
 import com.cnblogs.yjmyzz.langchain4j.study.agentic._4_parallel_workflow.ManagerCvReviewer;
 import com.cnblogs.yjmyzz.langchain4j.study.agentic._4_parallel_workflow.TeamMemberCvReviewer;
+import com.cnblogs.yjmyzz.langchain4j.study.config.OpenAiConfig;
 import com.cnblogs.yjmyzz.langchain4j.study.domain.CvReview;
 import com.cnblogs.yjmyzz.langchain4j.study.util.StringLoader;
 import dev.langchain4j.agentic.AgenticServices;
@@ -34,7 +35,7 @@ public class _8_Non_AI_Agents {
     public static void main(String[] args) throws IOException {
 
         ConfigurableApplicationContext context = SpringApplication.run(AgentDesignPatternApplication.class, args);
-        ChatModel model = context.getBean("ollamaChatModel", ChatModel.class);
+        ChatModel model = OpenAiConfig.chatModel();
 
         // 2. 构建并行评审步骤的AI子智能体
         HrCvReviewer hrReviewer = AgenticServices.agentBuilder(HrCvReviewer.class)

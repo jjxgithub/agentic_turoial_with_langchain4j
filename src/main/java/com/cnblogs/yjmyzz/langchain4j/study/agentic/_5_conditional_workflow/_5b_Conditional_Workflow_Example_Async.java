@@ -2,6 +2,7 @@ package com.cnblogs.yjmyzz.langchain4j.study.agentic._5_conditional_workflow;
 
 import com.cnblogs.yjmyzz.langchain4j.study.AgentDesignPatternApplication;
 import com.cnblogs.yjmyzz.langchain4j.study.agentic._4_parallel_workflow.ManagerCvReviewer;
+import com.cnblogs.yjmyzz.langchain4j.study.config.OpenAiConfig;
 import com.cnblogs.yjmyzz.langchain4j.study.domain.CvReview;
 import com.cnblogs.yjmyzz.langchain4j.study.util.StringLoader;
 import dev.langchain4j.agentic.AgenticServices;
@@ -27,7 +28,7 @@ public class _5b_Conditional_Workflow_Example_Async {
 
     public static void main(String[] args) throws IOException {
         ConfigurableApplicationContext context = SpringApplication.run(AgentDesignPatternApplication.class, args);
-        ChatModel model = context.getBean("ollamaChatModel", ChatModel.class);
+        ChatModel model = OpenAiConfig.chatModel();
 
         // 1. 创建所有异步智能体
         ManagerCvReviewer managerCvReviewer = AgenticServices.agentBuilder(ManagerCvReviewer.class)
