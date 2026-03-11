@@ -78,7 +78,7 @@ public class PlanInterpreter {
     }
 
     /**
-     * 在 scope 上求值条件。
+     * 在 scope 上求值单个条件。
      */
     public static boolean evaluateCondition(ConditionSchema c, AgenticScope scope) {
         if (c == null || c.sourceKey().isBlank()) return true;
@@ -99,6 +99,35 @@ public class PlanInterpreter {
             default:
                 return raw.contains(val);
         }
+    }
+
+    /** 每个任务执行后会写入 scope 的 key 后缀，值为 {@link DependencySuccessJudge#SUCCESS} 或 {@link DependencySuccessJudge#FAILURE} */
+    private static final String JUDGE_SUFFIX = "_judge";
+
+    /**
+     * 依赖是否均被 Judge 判为成功：若有任一依赖的 _judge 非 SUCCESS，则不执行当前任务（不穷举关键词）。
+     */
+    private static boolean dependencyJudgesAllSuccess(TaskSchema t, AgenticScope scope) {
+        if (t.dependsOn() == null || t.dependsOn().isEmpty()) return true;
+        for (String depId : t.dependsOn()) {
+            String verdict = String.valueOf(scope.readState(depId + JUDGE_SUFFIX, "")).trim();
+            if (!DependencySuccessJudge.SUCCESS.equalsIgnoreCase(verdict)) return false;
+        }
+        return true;
+    }
+
+    /**
+     * 任务条件求值：先要求所有依赖的 _judge 为 SUCCESS，再按 condition/conditions 求值。
+     */
+    public static boolean evaluateConditions(TaskSchema t, AgenticScope scope) {
+        if (!dependencyJudgesAllSuccess(t, scope)) return false;
+        if (t.conditions() != null && !t.conditions().isEmpty()) {
+            return t.conditions().stream().allMatch(c -> evaluateCondition(c, scope));
+        }
+        if (t.condition() != null && !t.condition().sourceKey().isBlank()) {
+            return evaluateCondition(t.condition(), scope);
+        }
+        return true;
     }
 
     /**
@@ -135,14 +164,15 @@ public class PlanInterpreter {
         for (TaskSchema t : tasks) {
             subAgents.add(scopeSetter(t));
             Object agent = taskAgent(t.id());
-            if (t.condition() != null && !t.condition().sourceKey().isBlank()) {
-                ConditionSchema cond = t.condition();
+            if (t.hasCondition()) {
                 agent = AgenticServices.conditionalBuilder()
-                        .subAgents(scope -> evaluateCondition(cond, scope), agent)
+                        .subAgents(scope -> evaluateConditions(t, scope), agent)
                         .outputKey(t.id())
                         .build();
             }
             subAgents.add(agent);
+            subAgents.add(scopeSetterForJudge(t));
+            subAgents.add(judgeAgent(t.id()));
         }
         return AgenticServices.sequenceBuilder()
                 .subAgents(subAgents.toArray())
@@ -163,14 +193,15 @@ public class PlanInterpreter {
                 TaskSchema t = wave.get(0);
                 steps.add(scopeSetter(t));
                 Object agent = taskAgent(t.id());
-                if (t.condition() != null && !t.condition().sourceKey().isBlank()) {
-                    ConditionSchema cond = t.condition();
+                if (t.hasCondition()) {
                     agent = AgenticServices.conditionalBuilder()
-                            .subAgents(scope -> evaluateCondition(cond, scope), agent)
+                            .subAgents(scope -> evaluateConditions(t, scope), agent)
                             .outputKey(t.id())
                             .build();
                 }
                 steps.add(agent);
+                steps.add(scopeSetterForJudge(t));
+                steps.add(judgeAgent(t.id()));
             } else {
                 steps.add(AgenticServices.agentAction(scope -> {
                     for (TaskSchema t : wave) {
@@ -181,13 +212,17 @@ public class PlanInterpreter {
                 }));
                 steps.add(AgenticServices.agentAction(scope -> {
                     for (TaskSchema t : wave) {
-                        if (t.condition() != null && !evaluateCondition(t.condition(), scope)) continue;
+                        if (t.hasCondition() && !evaluateConditions(t, scope)) continue;
                         String q = String.valueOf(scope.readState("question_" + t.id(), ""));
                         String ctx = String.valueOf(scope.readState("context_" + t.id(), ""));
                         String res = directTaskAgent.execute(q, ctx);
                         scope.writeState(t.id(), res);
                     }
                 }));
+                for (TaskSchema t : wave) {
+                    steps.add(scopeSetterForJudge(t));
+                    steps.add(judgeAgent(t.id()));
+                }
             }
         }
         List<TaskSchema> allTasks = waveList.stream().flatMap(List::stream).collect(Collectors.toList());
@@ -234,6 +269,23 @@ public class PlanInterpreter {
         return AgenticServices.agentBuilder(GenericTaskAgent.class)
                 .chatModel(chatModel)
                 .outputKey(outputKey)
+                .build();
+    }
+
+    /** 为 Judge 准备 scope：写入当前要判断的任务 id、描述、结果（从 scope 读该任务 id 的结果）。 */
+    private Object scopeSetterForJudge(TaskSchema t) {
+        return AgenticServices.agentAction(scope -> {
+            String result = String.valueOf(scope.readState(t.id(), ""));
+            scope.writeState("currentJudgeTaskId", t.id());
+            scope.writeState("currentJudgeTaskQuestion", t.question());
+            scope.writeState("currentJudgeTaskResult", result);
+        });
+    }
+
+    private Object judgeAgent(String taskId) {
+        return AgenticServices.agentBuilder(DependencySuccessJudge.class)
+                .chatModel(chatModel)
+                .outputKey(taskId + JUDGE_SUFFIX)
                 .build();
     }
 

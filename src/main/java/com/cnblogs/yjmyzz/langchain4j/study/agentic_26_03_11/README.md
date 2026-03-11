@@ -18,7 +18,8 @@
 
 - **TaskSchema**  
   - `id`, `question`, `dependsOn`（依赖的 taskId 列表）。  
-  - `condition`（可选）：`{ "sourceKey": "A", "op": "contains"|"equals"|"notContains"|"present"|"absent", "value": "雨" }`，在 scope 上求值，成立才执行该任务。
+  - `condition`（可选，单个）：`{ "sourceKey": "A", "op": "contains"|"equals"|"notContains"|"present"|"absent", "value": "雨" }`。  
+  - `conditions`（可选，多个，**全部满足**才执行）：同上结构的数组。具体 sourceKey/op/value 由 LLM 根据用户意图推断，解释器只做通用求值（不绑具体业务）。
 
 ## 执行模式与 agentic 映射
 
@@ -27,6 +28,12 @@
 | **sequence**     | 严格按拓扑序执行，带条件的任务用条件分支 | `sequenceBuilder` + 每步 `agentAction`(写 scope) + 可选 `conditionalBuilder`(condition, agent) |
 | **parallel_waves** | 按层执行：同层多任务在同一 wave 内顺序执行（共享 scope），层间顺序；单任务层走 sequence 步 | 同层多任务：`agentAction` 写各 task 的 question_/context_，再 `agentAction` 内用 `directTaskAgent.execute` 顺序写回 scope；单任务同 sequence |
 | **supervisor**   | 监督者动态选择下一个子任务 | `supervisorBuilder`，子 agent 为 `sequence(setScope, genericAgent)`，返回摘要（无 per-task scope） |
+
+## 依赖是否成功：Judge Agent（不穷举关键词）
+
+每个任务执行后，会**自动**调用通用 **DependencySuccessJudge**：根据「任务描述 + 执行结果」判断该任务是否成功，仅输出 `SUCCESS` 或 `FAILURE`，写入 scope 的 `{taskId}_judge`。  
+后续任务若依赖该任务，解释器会**先**要求所有依赖的 `_judge` 均为 `SUCCESS`，再按 plan 的 condition/conditions 求值；任一依赖被判为 FAILURE 则不会执行当前任务。  
+不依赖关键词穷举，由 LLM 理解语义（如「无法直接查询」→ FAILURE）。
 
 ## 条件求值（ConditionSchema）
 

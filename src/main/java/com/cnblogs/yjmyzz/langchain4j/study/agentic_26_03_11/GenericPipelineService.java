@@ -1,5 +1,6 @@
 package com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11;
 
+import com.alibaba.fastjson.JSON;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -75,6 +76,7 @@ public class GenericPipelineService {
             // Step 3: 子问题拆分
             String planJson = planPlanner.plan(executableQuestion);
             PlanSchema plan = planInterpreter.parsePlan(planJson);
+            log.info("子问题拆分:"+JSON.toJSONString(plan));
             if (plan.tasks().isEmpty()) {
                 sendEvent(emitter, "plan_done", "{\"summary\":\"未拆分子任务\"}");
                 emitter.complete();
