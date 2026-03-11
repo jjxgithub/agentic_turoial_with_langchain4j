@@ -61,7 +61,7 @@ public class _7b_Supervisor_Orchestration_Advanced {
         EmailAssistant emailAssistant = AgenticServices.agentBuilder(EmailAssistant.class)
                 .chatModel(model)
                 .tools(new OrganizingTools())
-                .outputKey("response")
+                .outputKey("responseEmail")
                 .build();
 
         // 2. 构建监督者
@@ -69,10 +69,12 @@ public class _7b_Supervisor_Orchestration_Advanced {
                 .supervisorBuilder(HiringSupervisor.class)
                 .chatModel(model)
                 .subAgents(hrReviewer, managerReviewer, teamReviewer, interviewOrganizer, emailAssistant)
-                .contextGenerationStrategy(SupervisorContextStrategy.CHAT_MEMORY_AND_SUMMARIZATION)
+                // 性能优化：CHAT_MEMORY 去掉每步摘要，少 4 次 LLM 调用（原 CHAT_MEMORY_AND_SUMMARIZATION）
+                .contextGenerationStrategy(SupervisorContextStrategy.CHAT_MEMORY)
                 // 根据你的监督者需要了解子智能体做了什么，
-                // 你可以选择contextGenerationStrategy：CHAT_MEMORY、SUMMARIZATION或CHAT_MEMORY_AND_SUMMARIZATION
-                .responseStrategy(SupervisorResponseStrategy.SCORED) // 此策略使用评分模型来决定是最后的响应还是摘要最能解决用户请求
+                // 可选：CHAT_MEMORY、SUMMARIZATION、CHAT_MEMORY_AND_SUMMARIZATION
+                // 性能优化：LAST 直接返回最后一环结果，少 1 次评分调用（原 SCORED）
+                .responseStrategy(SupervisorResponseStrategy.LAST) // 若需要“总结”可改为 SUMMARY
                 // 这里的输出函数将覆盖响应策略
                 .supervisorContext("策略：始终首先检查HR，如有需要则升级，拒绝低匹配度的候选人。")
                 .build();

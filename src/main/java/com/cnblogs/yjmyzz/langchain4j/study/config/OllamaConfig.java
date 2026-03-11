@@ -1,63 +1,63 @@
-package com.cnblogs.yjmyzz.langchain4j.study.config;
-
-import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.ollama.OllamaChatModel;
-import dev.langchain4j.model.ollama.OllamaEmbeddingModel;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-
-import java.time.Duration;
-import java.util.List;
-
-/**
- * Ollama配置类
- * 用于配置langchain4j与本地Ollama服务的连接
- *
- * @author 菩提树下的杨过
- * @version 1.0.0
- */
-@Configuration
-public class OllamaConfig {
-
-    @Value("${ollama.base-url:http://localhost:11434}")
-    public String ollamaBaseUrl;
-
-    @Value("${ollama.model:deepseek-v3.1:671b-cloud}")
-    private String ollamaModel;
-
-    @Value("${ollama.embedding-model:nomic-embed-text:latest}")
-    public String embeddingModel;
-
-    @Value("${ollama.timeout:60}")
-    private Integer timeoutSeconds;
-
-    /**
-     * 配置Ollama聊天模型
-     *
-     * @return ChatLanguageModel实例
-     */
-    @Bean("ollamaChatModel")
-    public ChatModel chatModel() {
-        return OllamaChatModel.builder()
-                .baseUrl(ollamaBaseUrl)
-                .modelName(ollamaModel)
-                .timeout(Duration.ofSeconds(timeoutSeconds))
-                .temperature(0D)
-//                .logRequests(true)
-//                .logResponses(true)
-                .build();
-    }
-
-//    @Bean("ollamaEmbeddingModel")
-//    public OllamaEmbeddingModel embeddingModel() {
-//        return OllamaEmbeddingModel.builder()
+//package com.cnblogs.yjmyzz.langchain4j.study.config;
+//
+//import dev.langchain4j.model.chat.ChatModel;
+//import dev.langchain4j.model.ollama.OllamaChatModel;
+//import dev.langchain4j.model.ollama.OllamaEmbeddingModel;
+//import org.springframework.beans.factory.annotation.Value;
+//import org.springframework.context.annotation.Bean;
+//import org.springframework.context.annotation.Configuration;
+//
+//import java.time.Duration;
+//import java.util.List;
+//
+///**
+// * Ollama配置类
+// * 用于配置langchain4j与本地Ollama服务的连接
+// *
+// * @author 菩提树下的杨过
+// * @version 1.0.0
+// */
+//@Configuration
+//public class OllamaConfig {
+//
+//    @Value("${ollama.base-url:http://localhost:11434}")
+//    public String ollamaBaseUrl;
+//
+//    @Value("${ollama.model:deepseek-v3.1:671b-cloud}")
+//    private String ollamaModel;
+//
+//    @Value("${ollama.embedding-model:nomic-embed-text:latest}")
+//    public String embeddingModel;
+//
+//    @Value("${ollama.timeout:60}")
+//    private Integer timeoutSeconds;
+//
+//    /**
+//     * 配置Ollama聊天模型
+//     *
+//     * @return ChatLanguageModel实例
+//     */
+//    @Bean("ollamaChatModel")
+//    public ChatModel chatModel() {
+//        return OllamaChatModel.builder()
 //                .baseUrl(ollamaBaseUrl)
-//                .modelName(embeddingModel)
+//                .modelName(ollamaModel)
 //                .timeout(Duration.ofSeconds(timeoutSeconds))
-//                .logRequests(true)
-//                .logResponses(true)
+//                .temperature(0D)
+////                .logRequests(true)
+////                .logResponses(true)
 //                .build();
 //    }
-
-}
+//
+////    @Bean("ollamaEmbeddingModel")
+////    public OllamaEmbeddingModel embeddingModel() {
+////        return OllamaEmbeddingModel.builder()
+////                .baseUrl(ollamaBaseUrl)
+////                .modelName(embeddingModel)
+////                .timeout(Duration.ofSeconds(timeoutSeconds))
+////                .logRequests(true)
+////                .logResponses(true)
+////                .build();
+////    }
+//
+//}

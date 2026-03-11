@@ -1,6 +1,7 @@
 package com.cnblogs.yjmyzz.langchain4j.study.config;
 
 import dev.langchain4j.model.azure.AzureOpenAiEmbeddingModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -9,6 +10,11 @@ import java.time.Duration;
 
 @Configuration
 public class OpenAiConfig {
+
+    @Bean
+    public ChatModel chatModelBean() {
+        return chatModel();
+    }
 
     public static OpenAiChatModel chatModel() {
         return OpenAiChatModel.builder()
