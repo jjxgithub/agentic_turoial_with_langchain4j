@@ -2,8 +2,8 @@ package com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill.agentic;
 
 import com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.Agentic311Constants;
 import dev.langchain4j.agentic.AgenticServices;
-import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.UntypedAgent;
+import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.model.chat.ChatModel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,7 +51,7 @@ public class SkillWorkflowRunner {
     /**
      * 根据步骤列表构建 agentic sequence，执行后返回最后一步在 scope 中的结果。
      *
-     * @param steps 步骤列表（顺序执行）
+     * @param steps      步骤列表（顺序执行）
      * @param skillInput 入口输入（如当前 task 的 question）
      * @return 最后一步的输出；无步骤或执行异常时返回空字符串
      */
@@ -143,19 +143,23 @@ public class SkillWorkflowRunner {
                 .build();
     }
 
-    /** 前处理阶段：捕获异常时写错误 payload 到 currentStepInput，后续步骤可据此降级。 */
+    /**
+     * 前处理阶段：捕获异常时写错误 payload 到 currentStepInput，后续步骤可据此降级。
+     */
     private Object agentActionCatch(String stepId, String prevKey, AgentScopeAction action) {
         return AgenticServices.agentAction(scope -> {
             try {
                 action.run(scope);
             } catch (Exception e) {
                 log.warn("Step beforeStep failed, catch and continue: stepId={}", stepId, e);
-                scope.writeState(CURRENT_STEP_INPUT, formatErrorPayload(stepId, e));
+                scope.writeState(Agentic311Constants.ScopeKeys.CURRENT_STEP_INPUT, formatErrorPayload(stepId, e));
             }
         });
     }
 
-    /** 后处理阶段：捕获异常时仅打日志，不覆盖 stepResultKey（保留 Agent 输出）。 */
+    /**
+     * 后处理阶段：捕获异常时仅打日志，不覆盖 stepResultKey（保留 Agent 输出）。
+     */
     private Object agentActionCatchAfter(String stepId, String stepResultKey, AgentScopeAction action) {
         return AgenticServices.agentAction(scope -> {
             try {
@@ -166,10 +170,12 @@ public class SkillWorkflowRunner {
         });
     }
 
-    /** 在 agentAction 内调用 SubAgent 实例并捕获异常，写入 stepResultKey。 */
+    /**
+     * 在 agentAction 内调用 SubAgent 实例并捕获异常，写入 stepResultKey。
+     */
     private Object agentActionInvokeAgent(String stepId, String stepResultKey, SubAgent instance) {
         return AgenticServices.agentAction(scope -> {
-            String input = String.valueOf(scope.readState(CURRENT_STEP_INPUT, ""));
+            String input = String.valueOf(scope.readState(Agentic311Constants.ScopeKeys.CURRENT_STEP_INPUT, ""));
             try {
                 String result = instance.execute(input);
                 scope.writeState(stepResultKey, result != null ? result : "");
@@ -198,7 +204,7 @@ public class SkillWorkflowRunner {
     private static Object copyToCurrentStepInput(String prevKey) {
         return AgenticServices.agentAction(scope -> {
             String prev = String.valueOf(scope.readState(prevKey, ""));
-            scope.writeState(CURRENT_STEP_INPUT, prev);
+            scope.writeState(Agentic311Constants.ScopeKeys.CURRENT_STEP_INPUT, prev);
         });
     }
 
