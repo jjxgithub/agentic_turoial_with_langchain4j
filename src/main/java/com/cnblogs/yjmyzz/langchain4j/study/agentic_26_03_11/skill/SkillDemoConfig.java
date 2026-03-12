@@ -1,6 +1,8 @@
 package com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill;
 
 import com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.Agentic311Constants;
+import com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill.agentic.company.CompanyFindWebsiteSkillHandler;
+import com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill.agentic.company.CompanyWebsiteAnalysisSkillHandler;
 import com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill.agentic.report.ReportQuerySkillHandler;
 import com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill.demo.DetectLanguageStep;
 import com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill.demo.FarewellReplyStep;
@@ -11,6 +13,7 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.AiServices;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Lazy;
 
 import java.util.List;
 
@@ -35,16 +38,20 @@ public class SkillDemoConfig {
         return AiServices.builder(FarewellReplyStep.class).chatModel(chatModel).build();
     }
 
-    /** handlerId → SkillHandler，供 SKILL.md 中的 handlerId 解析。 */
+    /** handlerId → SkillHandler，供 SKILL.md 中的 handlerId 解析。@Lazy 避免与 CompanyAnalysisAgenticConfig 循环依赖。 */
     @Bean
     public SkillHandlerRegistry skillHandlerRegistry(
             GreetingSkillHandler greetingSkillHandler,
             FarewellSkillHandler farewellSkillHandler,
-            ReportQuerySkillHandler reportQuerySkillHandler) {
+            ReportQuerySkillHandler reportQuerySkillHandler,
+            @Lazy CompanyFindWebsiteSkillHandler companyFindWebsiteSkillHandler,
+            @Lazy CompanyWebsiteAnalysisSkillHandler companyWebsiteAnalysisSkillHandler) {
         return new SkillHandlerRegistry()
                 .register(Agentic311Constants.SkillHandlers.GREETING, greetingSkillHandler)
                 .register(Agentic311Constants.SkillHandlers.FAREWELL, farewellSkillHandler)
-                .register(Agentic311Constants.SkillHandlers.REPORT_QUERY, reportQuerySkillHandler);
+                .register(Agentic311Constants.SkillHandlers.REPORT_QUERY, reportQuerySkillHandler)
+                .register(Agentic311Constants.SkillHandlers.COMPANY_FIND_WEBSITE, companyFindWebsiteSkillHandler)
+                .register(Agentic311Constants.SkillHandlers.COMPANY_WEBSITE_ANALYSIS, companyWebsiteAnalysisSkillHandler);
     }
 
     /** LLM 技能路由：根据用户输入与技能描述选择最匹配的 skill id。 */

@@ -17,11 +17,11 @@ public interface PlanPlanner {
         {
           "execution": "sequence",
           "tasks": [
-            {"id":"A","question":"子问题描述","dependsOn":[]},
-            {"id":"B","question":"...","dependsOn":["A"],"condition":{"sourceKey":"A","op":"notContains","value":"某关键字"}},
-            {"id":"C","question":"...","dependsOn":["A","B"],"conditions":[{"sourceKey":"A","op":"present","value":""},{"sourceKey":"B","op":"notContains","value":"某关键字"}]}
+            {"id":"A","question":"子问题描述","dependsOn":[],"skillStepHint":null},
+            {"id":"B","question":"...","dependsOn":["A"],"condition":{"sourceKey":"A","op":"notContains","value":"某关键字"},"skillStepHint":null}
           ]
         }
+        - skillStepHint：可选，字符串。当拆成多任务且某任务**明显只对应多步能力中的某一阶段**时填写，以便 Skill 只执行该阶段、避免重复跑全流程。取值由各 Skill 自行约定（如「仅查/仅取」阶段用一类标识、「仅生成/仅分析」且依赖前序结果用另一类标识），用简短 snake_case；不明确或单任务时务必为 null。本提示不枚举具体业务，由你根据任务语义推断是否属于「首阶段」或「依赖前序的后续阶段」并给出合适标识。
         规则：
         - execution：必填。取值为 "sequence"、"parallel_waves"、"supervisor"。单任务时用 "sequence" 即可。
         - id：唯一标识，单任务时用 "A"。

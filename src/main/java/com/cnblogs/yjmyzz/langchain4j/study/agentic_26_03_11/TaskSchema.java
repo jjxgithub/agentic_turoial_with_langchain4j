@@ -6,16 +6,18 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 
 /**
- * 通用子任务 schema：id、问题描述、依赖、可选条件（可多个，全部满足才执行）。
+ * 通用子任务 schema：id、问题描述、依赖、可选条件（可多个，全部满足才执行）、可选步骤提示。
  * dependsOn 为空表示可立即执行；非空表示需等依赖任务完成后执行。
  * condition/conditions 非空时仅当条件在 scope 上全部成立时才执行该任务（conditional）。
+ * skillStepHint 由规划层输出，供多步 Skill 按子步骤执行（如 find_website / report_only），避免同 Skill 重复跑全流程。
  */
 public record TaskSchema(
         String id,
         String question,
         List<String> dependsOn,
         ConditionSchema condition,
-        List<ConditionSchema> conditions
+        List<ConditionSchema> conditions,
+        String skillStepHint
 ) {
     @JsonCreator
     public TaskSchema(
@@ -23,12 +25,14 @@ public record TaskSchema(
             @JsonProperty("question") String question,
             @JsonProperty("dependsOn") List<String> dependsOn,
             @JsonProperty("condition") ConditionSchema condition,
-            @JsonProperty("conditions") List<ConditionSchema> conditions) {
+            @JsonProperty("conditions") List<ConditionSchema> conditions,
+            @JsonProperty("skillStepHint") String skillStepHint) {
         this.id = id == null ? "" : id;
         this.question = question == null ? "" : question;
         this.dependsOn = dependsOn == null ? List.of() : List.copyOf(dependsOn);
         this.condition = condition;
         this.conditions = conditions == null ? List.of() : List.copyOf(conditions);
+        this.skillStepHint = skillStepHint != null && !skillStepHint.isBlank() ? skillStepHint.trim() : null;
     }
 
     /** 用于解释器：若配置了 conditions 则用列表（全部满足）；否则用单个 condition。 */

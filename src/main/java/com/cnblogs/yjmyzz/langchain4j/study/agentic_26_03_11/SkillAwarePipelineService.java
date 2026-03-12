@@ -96,7 +96,11 @@ public class SkillAwarePipelineService {
                     Skill skill = matched.get();
                     sendEvent(emitter, "skill_matched", skill.id());
                     PlanSchema singleTaskPlan = new PlanSchema(List.of(t), PlanSchema.EXECUTION_SEQUENCE);
-                    String result = skill.handler().handle(taskQuestion, singleTaskPlan);
+                    String context = buildContextFromDependencies(t.dependsOn(), results);
+                    String skillInput = (context != null && !context.isBlank() && !"（无）".equals(context))
+                            ? taskQuestion + "\n\n【上文结果，供本步参考】\n" + context
+                            : taskQuestion;
+                    String result = skill.handler().handle(skillInput, singleTaskPlan, results);
                     resultStr = result != null ? result : "";
                 } else {
                     String context = buildContextFromDependencies(t.dependsOn(), results);

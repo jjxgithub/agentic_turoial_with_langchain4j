@@ -27,6 +27,7 @@ public final class Agentic311Constants {
     public static final class ToolIds {
         private ToolIds() {}
         public static final String RELATIVE_TIME_RESOLVER = "relativeTimeResolver";
+        public static final String COMPANY_OFFICIAL_WEBSITE_SEARCH = "companyOfficialWebsiteSearch";
     }
 
     /** Demo Skill 的 StepProcessor id。 */
@@ -48,11 +49,24 @@ public final class Agentic311Constants {
         public static final String PROCESSOR_REPORT_PARSE = "report_report_parse";
     }
 
+    /** 公司相关 Skill 共用的 Agent/Processor id（官网查找、网站分析两步可被不同 Skill 复用）。 */
+    public static final class CompanyAnalysis {
+        private CompanyAnalysis() {}
+        public static final String AGENT_FIND_OFFICIAL_WEBSITE = "find_official_website";
+        public static final String AGENT_ANALYSIS_REPORT = "company_analysis_report";
+        public static final String PROCESSOR_FIND_WEBSITE = "company_find_website";
+        public static final String PROCESSOR_ANALYSIS_REPORT = "company_analysis_report";
+    }
+
     /** SkillHandlerRegistry 注册用的 handlerId，与 skills/*.md 中 handlerId 一致。 */
     public static final class SkillHandlers {
         private SkillHandlers() {}
         public static final String GREETING = "greeting";
         public static final String FAREWELL = "farewell";
         public static final String REPORT_QUERY = "report_query";
+        /** 公司官网查找（单步，仅查官网）。 */
+        public static final String COMPANY_FIND_WEBSITE = "company_find_website";
+        /** 公司网站分析（单步，基于上文结果生成报告）。 */
+        public static final String COMPANY_WEBSITE_ANALYSIS = "company_website_analysis";
     }
 }

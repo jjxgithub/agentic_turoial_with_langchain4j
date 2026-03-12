@@ -13,6 +13,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
+import java.util.Collections;
 
 /**
  * 通用 Skill 子工作流执行器：根据步骤列表 + SubAgent 注册表，用 langchain4j-agentic 的 sequence 编排并执行。
@@ -72,16 +73,36 @@ public class SkillWorkflowRunner {
      * @param workflowTimeoutMs 整条工作流最大执行时间（毫秒），&lt;= 0 或 -1 表示不限制
      */
     public String run(List<StepDef> steps, String skillInput, long workflowTimeoutMs) {
+        return run(steps, skillInput, workflowTimeoutMs, 0, Collections.emptyMap());
+    }
+
+    /**
+     * 从指定步骤起执行，并预填 scope（用于 skillStepHint=report_only 等只跑后半段、首步结果由前置任务提供的场景）。
+     *
+     * @param startFromStepIndex 从该步骤下标开始执行（0=全流程）；需 &gt; 0 时 preFillScope 应包含上一步的 step 结果 key。
+     * @param preFillScope       预填入 scope 的 key→value，通常包含 step_{上一步id}_result → 前置任务结果
+     */
+    public String run(List<StepDef> steps, String skillInput, long workflowTimeoutMs, int startFromStepIndex, Map<String, String> preFillScope) {
         if (steps == null || steps.isEmpty()) {
             return skillInput != null ? skillInput : "";
         }
+        List<StepDef> stepsToRun = startFromStepIndex > 0 && startFromStepIndex < steps.size()
+                ? steps.subList(startFromStepIndex, steps.size()) : steps;
+        String firstInputKeyForFirstStep = null;
+        if (startFromStepIndex > 0 && startFromStepIndex <= steps.size()) {
+            firstInputKeyForFirstStep = stepResultKey(steps.get(startFromStepIndex - 1).id());
+        }
         int inputLen = skillInput != null ? skillInput.length() : 0;
         if (log.isDebugEnabled()) {
-            log.debug("[SkillWorkflow] run start steps={} inputLen={} workflowTimeoutMs={}", steps.size(), inputLen, workflowTimeoutMs <= 0 ? -1 : workflowTimeoutMs);
+            log.debug("[SkillWorkflow] run start steps={} stepsToRun={} startFrom={} inputLen={} workflowTimeoutMs={}",
+                    steps.size(), stepsToRun.size(), startFromStepIndex, inputLen, workflowTimeoutMs <= 0 ? -1 : workflowTimeoutMs);
         }
-        UntypedAgent workflow = buildSequence(steps);
+        UntypedAgent workflow = buildSequence(stepsToRun, firstInputKeyForFirstStep);
         Map<String, Object> input = new LinkedHashMap<>();
         input.put(Agentic311Constants.ScopeKeys.SKILL_INPUT, skillInput != null ? skillInput : "");
+        if (preFillScope != null && !preFillScope.isEmpty()) {
+            input.putAll(preFillScope);
+        }
         try {
             Object result = (workflowTimeoutMs > 0)
                     ? runWithOptionalTimeout(workflowTimeoutMs, () -> workflow.invoke(input))
@@ -108,18 +129,26 @@ public class SkillWorkflowRunner {
      * 构建 sequence：每步 = [前处理可选] + 写 currentStepInput（或由前处理写入） + SubAgent + [后处理可选]。
      * 当 StepDef 的 catchBeforeStepError/catchAgentError/catchAfterStepError 为 true 时，对应阶段异常被捕获、写约定错误到 scope 并继续下一步。
      * 构建前会校验每步的 agentId、preProcessorId、postProcessorId 已在对应注册表中注册，否则抛出 {@link StepValidationException}。
+     *
+     * @param firstInputKeyForFirstStep 若非空，首步的 prevKey 使用该 key（用于从中间步开始时读取预填的上一步结果）
      */
     UntypedAgent buildSequence(List<StepDef> steps) {
+        return buildSequence(steps, null);
+    }
+
+    UntypedAgent buildSequence(List<StepDef> steps, String firstInputKeyForFirstStep) {
         validateSteps(steps);
         List<Object> subAgents = new ArrayList<>();
         String firstInputKey = Agentic311Constants.ScopeKeys.SKILL_INPUT;
-        for (StepDef step : steps) {
+        for (int i = 0; i < steps.size(); i++) {
+            StepDef step = steps.get(i);
             if (log.isDebugEnabled()) {
                 log.debug("[SkillWorkflow] building step stepId={}", step.id());
             }
             String stepResultKey = stepResultKey(step.id());
             Class<? extends SubAgent> agentClass = subAgentRegistry.getAgentClass(step.agentId());
-            final String prevKey = firstInputKey;
+            final String prevKey = (i == 0 && firstInputKeyForFirstStep != null && !firstInputKeyForFirstStep.isBlank())
+                    ? firstInputKeyForFirstStep : firstInputKey;
 
             // 前处理（可选捕获）
             if (hasProcessor(step.preProcessorId())) {
