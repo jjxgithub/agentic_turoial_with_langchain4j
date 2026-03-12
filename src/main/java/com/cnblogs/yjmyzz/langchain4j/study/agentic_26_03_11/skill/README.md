@@ -27,9 +27,11 @@ keywords:
 - **id**：唯一标识。
 - **name** / **description**：展示或后续扩展用。
 - **handlerId**：对应代码里在 `SkillHandlerRegistry` 中注册的 handler（如 `greeting` → `GreetingSkillHandler`）。
-- **keywords**：用户输入包含任一关键词即命中该 skill（列表或逗号分隔一行均可）。
+- **keywords**：在 md 中保留用于展示或后续扩展；**匹配由 LLM 路由完成**，不依赖关键词包含。
 
-启动时 `SkillMarkdownLoader.loadFromClasspath("classpath*:skills/*.md", skillHandlerRegistry)` 加载所有 md，解析出 `Skill` 并注入 `SkillRegistry`。
+**匹配策略（行业通用做法）**：默认使用 **LLM 路由**（`SkillRouter` + `LlmSkillMatcher`）：将技能列表（id / name / description）与用户可执行问题交给 LLM，由 LLM 返回最匹配的 skill id 或 none。可切换为 `KeywordSkillMatcher`（按 keywords 包含）用于回退或测试。
+
+启动时 `SkillMarkdownLoader.loadFromClasspath("classpath*:skills/*.md", skillHandlerRegistry)` 加载所有 md，解析出 `Skill` 并注入 `SkillRegistry`；`SkillRegistry` 构造时注入 `SkillMatcher`（默认 `LlmSkillMatcher`）。
 
 ## Demo（非报表）
 

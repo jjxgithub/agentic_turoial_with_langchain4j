@@ -5,11 +5,17 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Skill 列表：注册与发现。编排完成后据此匹配应由哪个 Agent 处理。
+ * Skill 列表：注册与发现。编排完成后通过注入的 {@link SkillMatcher} 匹配应由哪个 Agent 处理。
+ * 默认使用 LLM 路由（{@link LlmSkillMatcher}），符合行业通用做法。
  */
 public class SkillRegistry {
 
     private final List<Skill> skills = new ArrayList<>();
+    private final SkillMatcher matcher;
+
+    public SkillRegistry(SkillMatcher matcher) {
+        this.matcher = matcher != null ? matcher : new KeywordSkillMatcher();
+    }
 
     public SkillRegistry register(Skill skill) {
         if (skill != null && skill.id() != null && !skill.id().isBlank()) {
@@ -23,12 +29,9 @@ public class SkillRegistry {
         return this;
     }
 
-    /**
-     * 按关键词匹配：返回第一个命中的 skill；若多个命中可后续改为打分或 LLM 选择。
-     */
+    /** 使用配置的匹配策略（如 LLM 路由）返回命中的 skill。 */
     public Optional<Skill> findMatch(String executableQuestion) {
-        if (executableQuestion == null || executableQuestion.isBlank()) return Optional.empty();
-        return skills.stream().filter(s -> s.matches(executableQuestion)).findFirst();
+        return matcher.findMatch(executableQuestion, getAll());
     }
 
     public List<Skill> getAll() {

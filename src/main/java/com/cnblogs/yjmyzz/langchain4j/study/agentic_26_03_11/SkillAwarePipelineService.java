@@ -80,7 +80,7 @@ public class SkillAwarePipelineService {
             }
             sendEvent(emitter, "plan", objectMapper.writeValueAsString(plan));
 
-            Optional<Skill> matched = skillRegistry.findMatch(executableQuestion);
+            Optional<Skill> matched = skillRegistry.findMatch(userInput);
             if (matched.isPresent()) {
                 Skill skill = matched.get();
                 sendEvent(emitter, "skill_matched", skill.id());

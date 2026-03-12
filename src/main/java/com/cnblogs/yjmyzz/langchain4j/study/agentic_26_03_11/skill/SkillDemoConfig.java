@@ -46,11 +46,25 @@ public class SkillDemoConfig {
                 .register("farewell", farewellSkillHandler);
     }
 
-    /** 从 classpath:skills/*.md 加载 skill 定义，并绑定 Handler。 */
+    /** LLM 技能路由：根据用户输入与技能描述选择最匹配的 skill id。 */
     @Bean
-    public SkillRegistry skillRegistry(SkillHandlerRegistry skillHandlerRegistry) {
+    public SkillRouter skillRouter(ChatModel chatModel) {
+        return AiServices.builder(SkillRouter.class)
+                .chatModel(chatModel)
+                .build();
+    }
+
+    /** 使用 LLM 做 skill 匹配（行业通用做法）。 */
+    @Bean
+    public SkillMatcher skillMatcher(SkillRouter skillRouter) {
+        return new LlmSkillMatcher(skillRouter);
+    }
+
+    /** 从 classpath:skills/*.md 加载 skill 定义，并绑定 Handler；匹配策略为 LLM 路由。 */
+    @Bean
+    public SkillRegistry skillRegistry(SkillHandlerRegistry skillHandlerRegistry, SkillMatcher skillMatcher) {
         List<Skill> fromMd = SkillMarkdownLoader.loadFromClasspath("classpath*:skills/*.md", skillHandlerRegistry);
-        SkillRegistry registry = new SkillRegistry();
+        SkillRegistry registry = new SkillRegistry(skillMatcher);
         registry.registerAll(fromMd);
         return registry;
     }
