@@ -1,6 +1,6 @@
 package com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill.agentic.report;
 
-import com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill.agentic.SkillWorkflowRunner;
+import com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.Agentic311Constants;
 import com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill.agentic.StepProcessor;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import org.slf4j.Logger;
@@ -50,16 +50,12 @@ public class ReportParseStepProcessor implements StepProcessor {
                 .replace("${orderByFieldNames}", orderByFieldNames)
                 .replace("${field2SelectionNames}", field2SelectionNames);
         prompt = String.format(prompt, alignJson);
-        scope.writeState(SkillWorkflowRunner.CURRENT_STEP_INPUT, prompt);
+        scope.writeState(Agentic311Constants.ScopeKeys.CURRENT_STEP_INPUT, prompt);
     }
 
     @Override
     public void afterStep(AgenticScope scope, String stepId, String stepResultKey) {
         String raw = String.valueOf(scope.readState(stepResultKey, ""));
-        // TODO: 解析最终报表 JSON，校验字段均在候选池内；可调用报表查询接口/数据服务执行查询并写入 scope 或返回
-        // ReportQueryParams params = objectMapper.readValue(raw, ReportQueryParams.class);
-        // Object queryResult = reportQueryService.execute(params);
-        // scope.writeState(stepResultKey, objectMapper.writeValueAsString(queryResult));
         log.debug("report_parse afterStep stepId={} resultLen={}", stepId, raw.length());
         scope.writeState(stepResultKey, raw);
     }

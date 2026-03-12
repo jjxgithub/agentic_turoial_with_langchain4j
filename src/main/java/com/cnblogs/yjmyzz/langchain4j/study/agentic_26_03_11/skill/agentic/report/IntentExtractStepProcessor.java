@@ -1,6 +1,6 @@
 package com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill.agentic.report;
 
-import com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill.agentic.SkillWorkflowRunner;
+import com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.Agentic311Constants;
 import com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill.agentic.StepProcessor;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import org.slf4j.Logger;
@@ -20,7 +20,7 @@ public class IntentExtractStepProcessor implements StepProcessor {
         String prev = String.valueOf(scope.readState(previousOutputKey, "")).trim();
         // 首步为 skill_input（用户原问），否则为上一步的 JSON 结果；意图提取需要用户原问 + 可选语义解析结果
         String prompt = String.format(ReportPromptTemplates.INTENT_EXTRACT, prev);
-        scope.writeState(SkillWorkflowRunner.CURRENT_STEP_INPUT, prompt);
+        scope.writeState(Agentic311Constants.ScopeKeys.CURRENT_STEP_INPUT, prompt);
     }
 
     @Override

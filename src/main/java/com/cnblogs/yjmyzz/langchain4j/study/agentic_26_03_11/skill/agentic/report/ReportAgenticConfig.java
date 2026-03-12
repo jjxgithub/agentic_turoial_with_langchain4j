@@ -1,5 +1,6 @@
 package com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill.agentic.report;
 
+import com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.Agentic311Constants;
 import com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill.agentic.SkillWorkflowRunner;
 import com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill.agentic.StepProcessorRegistry;
 import com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill.agentic.SubAgentInstanceRegistry;
@@ -15,16 +16,6 @@ import org.springframework.context.annotation.Configuration;
  */
 @Configuration
 public class ReportAgenticConfig {
-
-    public static final String AGENT_SEMANTIC_PARSE = "semantic_parse";
-    public static final String AGENT_INTENT_EXTRACT = "intent_extract";
-    public static final String AGENT_ALIGN = "align";
-    public static final String AGENT_REPORT_PARSE = "report_parse";
-
-    public static final String PROCESSOR_SEMANTIC = "report_semantic";
-    public static final String PROCESSOR_INTENT = "report_intent";
-    public static final String PROCESSOR_ALIGN = "report_align";
-    public static final String PROCESSOR_REPORT_PARSE = "report_report_parse";
 
     private final SubAgentRegistry subAgentRegistry;
     private final StepProcessorRegistry stepProcessorRegistry;
@@ -51,15 +42,15 @@ public class ReportAgenticConfig {
     @PostConstruct
     public void init() {
         subAgentRegistry
-                .register(AGENT_SEMANTIC_PARSE, SemanticParseAgent.class)
-                .register(AGENT_INTENT_EXTRACT, IntentExtractAgent.class)
-                .register(AGENT_ALIGN, AlignAgent.class)
-                .register(AGENT_REPORT_PARSE, ReportParseAgent.class);
+                .register(Agentic311Constants.Report.AGENT_SEMANTIC_PARSE, SemanticParseAgent.class)
+                .register(Agentic311Constants.Report.AGENT_INTENT_EXTRACT, IntentExtractAgent.class)
+                .register(Agentic311Constants.Report.AGENT_ALIGN, AlignAgent.class)
+                .register(Agentic311Constants.Report.AGENT_REPORT_PARSE, ReportParseAgent.class);
         stepProcessorRegistry
-                .register(PROCESSOR_SEMANTIC, semanticParseStepProcessor)
-                .register(PROCESSOR_INTENT, intentExtractStepProcessor)
-                .register(PROCESSOR_ALIGN, alignStepProcessor)
-                .register(PROCESSOR_REPORT_PARSE, reportParseStepProcessor);
+                .register(Agentic311Constants.Report.PROCESSOR_SEMANTIC, semanticParseStepProcessor)
+                .register(Agentic311Constants.Report.PROCESSOR_INTENT, intentExtractStepProcessor)
+                .register(Agentic311Constants.Report.PROCESSOR_ALIGN, alignStepProcessor)
+                .register(Agentic311Constants.Report.PROCESSOR_REPORT_PARSE, reportParseStepProcessor);
     }
 
     @Bean
@@ -90,17 +81,14 @@ public class ReportAgenticConfig {
             AlignAgent alignAgent,
             ReportParseAgent reportParseAgent) {
         return new SubAgentInstanceRegistry()
-                .register(AGENT_SEMANTIC_PARSE, semanticParseAgent)
-                .register(AGENT_INTENT_EXTRACT, intentExtractAgent)
-                .register(AGENT_ALIGN, alignAgent)
-                .register(AGENT_REPORT_PARSE, reportParseAgent);
+                .register(Agentic311Constants.Report.AGENT_SEMANTIC_PARSE, semanticParseAgent)
+                .register(Agentic311Constants.Report.AGENT_INTENT_EXTRACT, intentExtractAgent)
+                .register(Agentic311Constants.Report.AGENT_ALIGN, alignAgent)
+                .register(Agentic311Constants.Report.AGENT_REPORT_PARSE, reportParseAgent);
     }
 
     @Bean
     public ReportQuerySkillHandler reportQuerySkillHandler(SkillWorkflowRunner skillWorkflowRunner) {
         return new ReportQuerySkillHandler(skillWorkflowRunner);
     }
-
-
-
 }

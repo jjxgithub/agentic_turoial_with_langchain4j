@@ -1,5 +1,6 @@
 package com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill.agentic;
 
+import com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.Agentic311Constants;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,7 +19,7 @@ public class DemoStepProcessor implements StepProcessor {
     public void beforeStep(AgenticScope scope, String stepId, String previousOutputKey) {
         String prev = String.valueOf(scope.readState(previousOutputKey, ""));
         log.debug("beforeStep stepId={} prevKey={} len={}", stepId, previousOutputKey, prev.length());
-        scope.writeState(SkillWorkflowRunner.CURRENT_STEP_INPUT, prev);
+        scope.writeState(Agentic311Constants.ScopeKeys.CURRENT_STEP_INPUT, prev);
     }
 
     @Override

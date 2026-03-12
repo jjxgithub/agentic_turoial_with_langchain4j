@@ -1,6 +1,6 @@
 package com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill.agentic.report;
 
-import com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill.agentic.SkillWorkflowRunner;
+import com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.Agentic311Constants;
 import com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill.agentic.StepProcessor;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import org.slf4j.Logger;
@@ -32,7 +32,7 @@ public class AlignStepProcessor implements StepProcessor {
                 .replace("${dateFieldNames}", dateFieldNames)
                 .replace("${fieldNames}", fieldNames);
         prompt = String.format(prompt, intentJson);
-        scope.writeState(SkillWorkflowRunner.CURRENT_STEP_INPUT, prompt);
+        scope.writeState(Agentic311Constants.ScopeKeys.CURRENT_STEP_INPUT, prompt);
     }
 
     @Override

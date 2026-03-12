@@ -1,5 +1,6 @@
 package com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill.agentic.report;
 
+import com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.Agentic311Constants;
 import com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.PlanSchema;
 import com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill.SkillHandler;
 import com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill.agentic.SkillWorkflowRunner;
@@ -14,10 +15,10 @@ import java.util.List;
 public class ReportQuerySkillHandler implements SkillHandler {
 
     private static final List<StepDef> REPORT_STEPS = List.of(
-            new StepDef("semantic_parse", "语义解析", "semantic_parse", ReportAgenticConfig.PROCESSOR_SEMANTIC, ReportAgenticConfig.PROCESSOR_SEMANTIC),
-            new StepDef("intent_extract", "意图提取", "intent_extract", ReportAgenticConfig.PROCESSOR_INTENT, ReportAgenticConfig.PROCESSOR_INTENT),
-            new StepDef("align", "对齐", "align", ReportAgenticConfig.PROCESSOR_ALIGN, ReportAgenticConfig.PROCESSOR_ALIGN),
-            new StepDef("report_parse", "报表解析", "report_parse", ReportAgenticConfig.PROCESSOR_REPORT_PARSE, ReportAgenticConfig.PROCESSOR_REPORT_PARSE)
+            new StepDef(Agentic311Constants.Report.AGENT_SEMANTIC_PARSE, "语义解析", Agentic311Constants.Report.AGENT_SEMANTIC_PARSE, Agentic311Constants.Report.PROCESSOR_SEMANTIC, Agentic311Constants.Report.PROCESSOR_SEMANTIC),
+            new StepDef(Agentic311Constants.Report.AGENT_INTENT_EXTRACT, "意图提取", Agentic311Constants.Report.AGENT_INTENT_EXTRACT, Agentic311Constants.Report.PROCESSOR_INTENT, Agentic311Constants.Report.PROCESSOR_INTENT),
+            new StepDef(Agentic311Constants.Report.AGENT_ALIGN, "对齐", Agentic311Constants.Report.AGENT_ALIGN, Agentic311Constants.Report.PROCESSOR_ALIGN, Agentic311Constants.Report.PROCESSOR_ALIGN),
+            new StepDef(Agentic311Constants.Report.AGENT_REPORT_PARSE, "报表解析", Agentic311Constants.Report.AGENT_REPORT_PARSE, Agentic311Constants.Report.PROCESSOR_REPORT_PARSE, Agentic311Constants.Report.PROCESSOR_REPORT_PARSE, List.of(Agentic311Constants.ToolIds.RELATIVE_TIME_RESOLVER))
     );
 
     private final SkillWorkflowRunner workflowRunner;

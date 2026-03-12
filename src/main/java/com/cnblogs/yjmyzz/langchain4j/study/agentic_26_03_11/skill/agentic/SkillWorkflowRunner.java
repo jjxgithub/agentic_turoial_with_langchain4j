@@ -1,5 +1,6 @@
 package com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill.agentic;
 
+import com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.Agentic311Constants;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.UntypedAgent;
@@ -21,35 +22,30 @@ public class SkillWorkflowRunner {
 
     private static final Logger log = LoggerFactory.getLogger(SkillWorkflowRunner.class);
 
-    /** 入口输入在 scope 中的 key，invoke 时传入。 */
-    public static final String SKILL_INPUT = "skill_input";
-    /** 每步从 scope 读取的输入 key，由本 runner 在每步前写入（或由 StepProcessor.beforeStep 写入）。 */
-    public static final String CURRENT_STEP_INPUT = "currentStepInput";
-    /** 每步结果在 scope 中的 key 前缀，完整 key = STEP_RESULT_PREFIX + stepId。 */
-    public static final String STEP_RESULT_PREFIX = "step_";
-    public static final String STEP_RESULT_SUFFIX = "_result";
-
-    /** 捕获异常时写入 scope 的约定格式，下游可解析 error/stepId/message 做降级。 */
-    public static final String ERROR_PAYLOAD_TEMPLATE = "{\"error\":true,\"stepId\":\"%s\",\"message\":\"%s\"}";
-
     private final ChatModel chatModel;
     private final SubAgentRegistry subAgentRegistry;
     private final StepProcessorRegistry stepProcessorRegistry;
     private final SubAgentInstanceRegistry instanceRegistry;
+    private final ToolRegistry toolRegistry;
 
     public SkillWorkflowRunner(ChatModel chatModel, SubAgentRegistry subAgentRegistry) {
-        this(chatModel, subAgentRegistry, null, null);
+        this(chatModel, subAgentRegistry, null, null, null);
     }
 
     public SkillWorkflowRunner(ChatModel chatModel, SubAgentRegistry subAgentRegistry, StepProcessorRegistry stepProcessorRegistry) {
-        this(chatModel, subAgentRegistry, stepProcessorRegistry, null);
+        this(chatModel, subAgentRegistry, stepProcessorRegistry, null, null);
     }
 
     public SkillWorkflowRunner(ChatModel chatModel, SubAgentRegistry subAgentRegistry, StepProcessorRegistry stepProcessorRegistry, SubAgentInstanceRegistry instanceRegistry) {
+        this(chatModel, subAgentRegistry, stepProcessorRegistry, instanceRegistry, null);
+    }
+
+    public SkillWorkflowRunner(ChatModel chatModel, SubAgentRegistry subAgentRegistry, StepProcessorRegistry stepProcessorRegistry, SubAgentInstanceRegistry instanceRegistry, ToolRegistry toolRegistry) {
         this.chatModel = chatModel;
         this.subAgentRegistry = subAgentRegistry;
         this.stepProcessorRegistry = stepProcessorRegistry != null ? stepProcessorRegistry : new StepProcessorRegistry();
         this.instanceRegistry = instanceRegistry;
+        this.toolRegistry = toolRegistry;
     }
 
     /**
@@ -65,7 +61,7 @@ public class SkillWorkflowRunner {
         }
         UntypedAgent workflow = buildSequence(steps);
         Map<String, Object> input = new LinkedHashMap<>();
-        input.put(SKILL_INPUT, skillInput != null ? skillInput : "");
+        input.put(Agentic311Constants.ScopeKeys.SKILL_INPUT, skillInput != null ? skillInput : "");
         try {
             Object result = workflow.invoke(input);
             if (result instanceof String) return (String) result;
@@ -82,7 +78,7 @@ public class SkillWorkflowRunner {
      */
     UntypedAgent buildSequence(List<StepDef> steps) {
         List<Object> subAgents = new ArrayList<>();
-        String firstInputKey = SKILL_INPUT;
+        String firstInputKey = Agentic311Constants.ScopeKeys.SKILL_INPUT;
         for (StepDef step : steps) {
             String stepResultKey = stepResultKey(step.id());
             Class<? extends SubAgent> agentClass = subAgentRegistry.getAgentClass(step.agentId());
@@ -108,15 +104,24 @@ public class SkillWorkflowRunner {
                 subAgents.add(copyToCurrentStepInput(prevKey));
             }
 
-            // SubAgent：可选通过实例调用并捕获，否则走 agentBuilder（异常会中断整链）
-            SubAgent instance = (instanceRegistry != null) ? instanceRegistry.get(step.agentId()) : null;
-            if (step.catchAgentError() && instance != null) {
+            // SubAgent：若本步配置了 toolIds 则用 agentBuilder + tools（不沿用预建实例）；否则可选实例+捕获或 agentBuilder
+            List<Object> stepTools = (toolRegistry != null && step.toolIds() != null && !step.toolIds().isEmpty())
+                    ? toolRegistry.getTools(step.toolIds()) : List.of();
+            boolean useTools = !stepTools.isEmpty();
+
+            SubAgent instance = (!useTools && instanceRegistry != null) ? instanceRegistry.get(step.agentId()) : null;
+            if (!useTools && step.catchAgentError() && instance != null) {
                 subAgents.add(agentActionInvokeAgent(step.id(), stepResultKey, instance));
             } else {
-                subAgents.add(AgenticServices.agentBuilder(agentClass)
+                var builder = AgenticServices.agentBuilder(agentClass)
                         .chatModel(chatModel)
-                        .outputKey(stepResultKey)
-                        .build());
+                        .outputKey(stepResultKey);
+                if (useTools) {
+                    for (Object tool : stepTools) {
+                        builder = builder.tools(tool);
+                    }
+                }
+                subAgents.add(builder.build());
             }
 
             // 后处理（可选捕获）
@@ -178,7 +183,7 @@ public class SkillWorkflowRunner {
     private static String formatErrorPayload(String stepId, Exception e) {
         String msg = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
         msg = msg.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", " ").replace("\r", " ");
-        return String.format(ERROR_PAYLOAD_TEMPLATE, stepId, msg);
+        return String.format(Agentic311Constants.ScopeKeys.ERROR_PAYLOAD_TEMPLATE, stepId, msg);
     }
 
     @FunctionalInterface
@@ -198,6 +203,6 @@ public class SkillWorkflowRunner {
     }
 
     private static String stepResultKey(String stepId) {
-        return STEP_RESULT_PREFIX + stepId + STEP_RESULT_SUFFIX;
+        return Agentic311Constants.ScopeKeys.STEP_RESULT_PREFIX + stepId + Agentic311Constants.ScopeKeys.STEP_RESULT_SUFFIX;
     }
 }

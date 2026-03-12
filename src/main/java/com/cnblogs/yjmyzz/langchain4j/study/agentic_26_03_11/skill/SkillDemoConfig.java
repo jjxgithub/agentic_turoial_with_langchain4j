@@ -1,8 +1,12 @@
 package com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill;
 
+import com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.Agentic311Constants;
 import com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill.agentic.report.ReportQuerySkillHandler;
-import com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill.demo.GreetingSkillHandler;
+import com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill.demo.DetectLanguageStep;
+import com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill.demo.FarewellReplyStep;
 import com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill.demo.FarewellSkillHandler;
+import com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill.demo.GenerateGreetingStep;
+import com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill.demo.GreetingSkillHandler;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.AiServices;
 import org.springframework.context.annotation.Bean;
@@ -17,24 +21,18 @@ import java.util.List;
 public class SkillDemoConfig {
 
     @Bean
-    public com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill.demo.DetectLanguageStep detectLanguageStep(ChatModel chatModel) {
-        return AiServices.builder(com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill.demo.DetectLanguageStep.class)
-                .chatModel(chatModel)
-                .build();
+    public DetectLanguageStep detectLanguageStep(ChatModel chatModel) {
+        return AiServices.builder(DetectLanguageStep.class).chatModel(chatModel).build();
     }
 
     @Bean
-    public com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill.demo.GenerateGreetingStep generateGreetingStep(ChatModel chatModel) {
-        return AiServices.builder(com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill.demo.GenerateGreetingStep.class)
-                .chatModel(chatModel)
-                .build();
+    public GenerateGreetingStep generateGreetingStep(ChatModel chatModel) {
+        return AiServices.builder(GenerateGreetingStep.class).chatModel(chatModel).build();
     }
 
     @Bean
-    public com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill.demo.FarewellReplyStep farewellReplyStep(ChatModel chatModel) {
-        return AiServices.builder(com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill.demo.FarewellReplyStep.class)
-                .chatModel(chatModel)
-                .build();
+    public FarewellReplyStep farewellReplyStep(ChatModel chatModel) {
+        return AiServices.builder(FarewellReplyStep.class).chatModel(chatModel).build();
     }
 
     /** handlerId → SkillHandler，供 SKILL.md 中的 handlerId 解析。 */
@@ -44,9 +42,9 @@ public class SkillDemoConfig {
             FarewellSkillHandler farewellSkillHandler,
             ReportQuerySkillHandler reportQuerySkillHandler) {
         return new SkillHandlerRegistry()
-                .register("greeting", greetingSkillHandler)
-                .register("farewell", farewellSkillHandler)
-                .register("report_query", reportQuerySkillHandler);
+                .register(Agentic311Constants.SkillHandlers.GREETING, greetingSkillHandler)
+                .register(Agentic311Constants.SkillHandlers.FAREWELL, farewellSkillHandler)
+                .register(Agentic311Constants.SkillHandlers.REPORT_QUERY, reportQuerySkillHandler);
     }
 
     /** LLM 技能路由：根据用户输入与技能描述选择最匹配的 skill id。 */
