@@ -2,6 +2,7 @@ package com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill.agentic.repo
 
 import com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill.agentic.SkillWorkflowRunner;
 import com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill.agentic.StepProcessorRegistry;
+import com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill.agentic.SubAgentInstanceRegistry;
 import com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill.agentic.SubAgentRegistry;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.AiServices;
@@ -79,6 +80,20 @@ public class ReportAgenticConfig {
     @Bean
     public ReportParseAgent reportParseAgent(ChatModel chatModel) {
         return AiServices.builder(ReportParseAgent.class).chatModel(chatModel).build();
+    }
+
+    /** 供 catchAgentError 时在 agentAction 内调用实例并捕获异常。 */
+    @Bean
+    public SubAgentInstanceRegistry subAgentInstanceRegistry(
+            SemanticParseAgent semanticParseAgent,
+            IntentExtractAgent intentExtractAgent,
+            AlignAgent alignAgent,
+            ReportParseAgent reportParseAgent) {
+        return new SubAgentInstanceRegistry()
+                .register(AGENT_SEMANTIC_PARSE, semanticParseAgent)
+                .register(AGENT_INTENT_EXTRACT, intentExtractAgent)
+                .register(AGENT_ALIGN, alignAgent)
+                .register(AGENT_REPORT_PARSE, reportParseAgent);
     }
 
     @Bean

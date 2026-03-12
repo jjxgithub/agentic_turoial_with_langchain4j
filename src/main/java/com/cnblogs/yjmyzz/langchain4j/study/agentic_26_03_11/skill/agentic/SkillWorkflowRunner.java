@@ -15,7 +15,7 @@ import java.util.Map;
 /**
  * 通用 Skill 子工作流执行器：根据步骤列表 + SubAgent 注册表，用 langchain4j-agentic 的 sequence 编排并执行。
  * 步骤间通过 AgenticScope 传参：currentStepInput ← 上一步结果或 skill_input。
- * 每步可选前/后处理（{@link StepProcessor}）：前处理做数据组装（查库、调接口）后写 currentStepInput，后处理对 LLM 结果做解析/落库等。
+ * 每步可选前/后处理（{@link StepProcessor}）；每步可选异常捕获开关（beforeStep/Agent/afterStep），捕获时写约定错误到 scope 并继续。
  */
 public class SkillWorkflowRunner {
 
@@ -29,18 +29,27 @@ public class SkillWorkflowRunner {
     public static final String STEP_RESULT_PREFIX = "step_";
     public static final String STEP_RESULT_SUFFIX = "_result";
 
+    /** 捕获异常时写入 scope 的约定格式，下游可解析 error/stepId/message 做降级。 */
+    public static final String ERROR_PAYLOAD_TEMPLATE = "{\"error\":true,\"stepId\":\"%s\",\"message\":\"%s\"}";
+
     private final ChatModel chatModel;
     private final SubAgentRegistry subAgentRegistry;
     private final StepProcessorRegistry stepProcessorRegistry;
+    private final SubAgentInstanceRegistry instanceRegistry;
 
     public SkillWorkflowRunner(ChatModel chatModel, SubAgentRegistry subAgentRegistry) {
-        this(chatModel, subAgentRegistry, null);
+        this(chatModel, subAgentRegistry, null, null);
     }
 
     public SkillWorkflowRunner(ChatModel chatModel, SubAgentRegistry subAgentRegistry, StepProcessorRegistry stepProcessorRegistry) {
+        this(chatModel, subAgentRegistry, stepProcessorRegistry, null);
+    }
+
+    public SkillWorkflowRunner(ChatModel chatModel, SubAgentRegistry subAgentRegistry, StepProcessorRegistry stepProcessorRegistry, SubAgentInstanceRegistry instanceRegistry) {
         this.chatModel = chatModel;
         this.subAgentRegistry = subAgentRegistry;
         this.stepProcessorRegistry = stepProcessorRegistry != null ? stepProcessorRegistry : new StepProcessorRegistry();
+        this.instanceRegistry = instanceRegistry;
     }
 
     /**
@@ -69,8 +78,7 @@ public class SkillWorkflowRunner {
 
     /**
      * 构建 sequence：每步 = [前处理可选] + 写 currentStepInput（或由前处理写入） + SubAgent + [后处理可选]。
-     * 前处理：StepProcessor.beforeStep 可从 scope 读上一步、查库/调接口后写 currentStepInput；未配置则默认把上一步结果拷贝到 currentStepInput。
-     * 后处理：StepProcessor.afterStep 可从 scope 读本步结果、解析/调接口/落库后写回 stepResultKey。
+     * 当 StepDef 的 catchBeforeStepError/catchAgentError/catchAfterStepError 为 true 时，对应阶段异常被捕获、写约定错误到 scope 并继续下一步。
      */
     UntypedAgent buildSequence(List<StepDef> steps) {
         List<Object> subAgents = new ArrayList<>();
@@ -86,11 +94,13 @@ public class SkillWorkflowRunner {
             }
             final String prevKey = firstInputKey;
 
-            // 前处理：自定义 StepProcessor 或默认「上一步结果 → currentStepInput」
+            // 前处理（可选捕获）
             if (hasProcessor(step.preProcessorId())) {
                 StepProcessor pre = stepProcessorRegistry.get(step.preProcessorId());
                 if (pre != null) {
-                    subAgents.add(AgenticServices.agentAction(scope -> pre.beforeStep(scope, step.id(), prevKey)));
+                    subAgents.add(step.catchBeforeStepError()
+                            ? agentActionCatch(step.id(), prevKey, scope -> pre.beforeStep(scope, step.id(), prevKey))
+                            : AgenticServices.agentAction(scope -> pre.beforeStep(scope, step.id(), prevKey)));
                 } else {
                     subAgents.add(copyToCurrentStepInput(prevKey));
                 }
@@ -98,16 +108,24 @@ public class SkillWorkflowRunner {
                 subAgents.add(copyToCurrentStepInput(prevKey));
             }
 
-            subAgents.add(AgenticServices.agentBuilder(agentClass)
-                    .chatModel(chatModel)
-                    .outputKey(stepResultKey)
-                    .build());
+            // SubAgent：可选通过实例调用并捕获，否则走 agentBuilder（异常会中断整链）
+            SubAgent instance = (instanceRegistry != null) ? instanceRegistry.get(step.agentId()) : null;
+            if (step.catchAgentError() && instance != null) {
+                subAgents.add(agentActionInvokeAgent(step.id(), stepResultKey, instance));
+            } else {
+                subAgents.add(AgenticServices.agentBuilder(agentClass)
+                        .chatModel(chatModel)
+                        .outputKey(stepResultKey)
+                        .build());
+            }
 
-            // 后处理：对本步结果做解析/调接口/落库等
+            // 后处理（可选捕获）
             if (hasProcessor(step.postProcessorId())) {
                 StepProcessor post = stepProcessorRegistry.get(step.postProcessorId());
                 if (post != null) {
-                    subAgents.add(AgenticServices.agentAction(scope -> post.afterStep(scope, step.id(), stepResultKey)));
+                    subAgents.add(step.catchAfterStepError()
+                            ? agentActionCatchAfter(step.id(), stepResultKey, scope -> post.afterStep(scope, step.id(), stepResultKey))
+                            : AgenticServices.agentAction(scope -> post.afterStep(scope, step.id(), stepResultKey)));
                 }
             }
 
@@ -118,6 +136,54 @@ public class SkillWorkflowRunner {
                 .subAgents(subAgents.toArray())
                 .output(scope -> String.valueOf(scope.readState(lastResultKey, "")))
                 .build();
+    }
+
+    /** 前处理阶段：捕获异常时写错误 payload 到 currentStepInput，后续步骤可据此降级。 */
+    private Object agentActionCatch(String stepId, String prevKey, AgentScopeAction action) {
+        return AgenticServices.agentAction(scope -> {
+            try {
+                action.run(scope);
+            } catch (Exception e) {
+                log.warn("Step beforeStep failed, catch and continue: stepId={}", stepId, e);
+                scope.writeState(CURRENT_STEP_INPUT, formatErrorPayload(stepId, e));
+            }
+        });
+    }
+
+    /** 后处理阶段：捕获异常时仅打日志，不覆盖 stepResultKey（保留 Agent 输出）。 */
+    private Object agentActionCatchAfter(String stepId, String stepResultKey, AgentScopeAction action) {
+        return AgenticServices.agentAction(scope -> {
+            try {
+                action.run(scope);
+            } catch (Exception e) {
+                log.warn("Step afterStep failed, catch and continue: stepId={} resultKey={}", stepId, stepResultKey, e);
+            }
+        });
+    }
+
+    /** 在 agentAction 内调用 SubAgent 实例并捕获异常，写入 stepResultKey。 */
+    private Object agentActionInvokeAgent(String stepId, String stepResultKey, SubAgent instance) {
+        return AgenticServices.agentAction(scope -> {
+            String input = String.valueOf(scope.readState(CURRENT_STEP_INPUT, ""));
+            try {
+                String result = instance.execute(input);
+                scope.writeState(stepResultKey, result != null ? result : "");
+            } catch (Exception e) {
+                log.warn("Step agent failed, catch and continue: stepId={}", stepId, e);
+                scope.writeState(stepResultKey, formatErrorPayload(stepId, e));
+            }
+        });
+    }
+
+    private static String formatErrorPayload(String stepId, Exception e) {
+        String msg = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+        msg = msg.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", " ").replace("\r", " ");
+        return String.format(ERROR_PAYLOAD_TEMPLATE, stepId, msg);
+    }
+
+    @FunctionalInterface
+    private interface AgentScopeAction {
+        void run(AgenticScope scope);
     }
 
     private boolean hasProcessor(String processorId) {

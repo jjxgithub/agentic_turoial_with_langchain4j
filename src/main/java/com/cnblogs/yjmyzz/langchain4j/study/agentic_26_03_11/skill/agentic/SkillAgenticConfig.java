@@ -1,6 +1,7 @@
 package com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill.agentic;
 
 import dev.langchain4j.model.chat.ChatModel;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -26,7 +27,8 @@ public class SkillAgenticConfig {
     public SkillWorkflowRunner skillWorkflowRunner(
             ChatModel chatModel,
             SubAgentRegistry subAgentRegistry,
-            StepProcessorRegistry stepProcessorRegistry) {
-        return new SkillWorkflowRunner(chatModel, subAgentRegistry, stepProcessorRegistry);
+            StepProcessorRegistry stepProcessorRegistry,
+            @Autowired(required = false) SubAgentInstanceRegistry subAgentInstanceRegistry) {
+        return new SkillWorkflowRunner(chatModel, subAgentRegistry, stepProcessorRegistry, subAgentInstanceRegistry);
     }
 }
