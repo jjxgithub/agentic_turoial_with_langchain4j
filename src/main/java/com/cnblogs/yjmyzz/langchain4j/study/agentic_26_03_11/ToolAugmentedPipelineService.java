@@ -104,14 +104,15 @@ public class ToolAugmentedPipelineService {
                 try {
                     summaryText = resultSummaryAgent311.summarize(executableQuestion, resultsText.toString());
                 } catch (Exception e) {
-                    log.warn("result summary agent failed, fallback to raw results", e);
+                    log.warn("result summary agent failed, fallback to raw results error={}", e.getMessage(), e);
                     summaryText = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(results);
                 }
                 sendEvent(emitter, "plan_done", summaryText);
             }
             emitter.complete();
         } catch (Exception e) {
-            log.warn("chat error, sessionId={}", sessionId, e);
+            String errMsg = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+            log.warn("chat error sessionId={} error={}", sessionId, errMsg, e);
             try {
                 sendEvent(emitter, "error", e.getMessage());
             } catch (IOException ignored) {

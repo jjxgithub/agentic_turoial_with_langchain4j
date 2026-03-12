@@ -46,9 +46,10 @@ public final class GroupTool {
                     }
                 } catch (Exception e) {
                     if (attempt < maxAttempts) {
-                        log.warn("GroupTool {} member[{}] attempt {}/{} failed, retrying", groupId, i, attempt, maxAttempts, e);
+                        log.debug("GroupTool {} member[{}] attempt {}/{} failed, retrying error={}", groupId, i, attempt, maxAttempts, e.getMessage());
                     } else {
-                        log.warn("GroupTool {} member[{}] failed after {} attempt(s), fallback to next", groupId, i, maxAttempts, e);
+                        String errMsg = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+                        log.warn("GroupTool {} member[{}] failed after {} attempt(s), fallback to next error={}", groupId, i, maxAttempts, errMsg, e);
                     }
                 }
             }

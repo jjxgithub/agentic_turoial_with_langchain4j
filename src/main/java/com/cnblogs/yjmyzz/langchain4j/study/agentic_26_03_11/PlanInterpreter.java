@@ -44,7 +44,8 @@ public class PlanInterpreter {
         try {
             return objectMapper.readValue(json, PlanSchema.class);
         } catch (Exception e) {
-            log.warn("parsePlan failed, raw={}", raw, e);
+            String rawSnippet = raw != null && raw.length() > 200 ? raw.substring(0, 200) + "..." : raw;
+            log.warn("parsePlan failed, rawLen={} rawSnippet={}", raw != null ? raw.length() : 0, rawSnippet, e);
             return new PlanSchema(List.of(), PlanSchema.EXECUTION_PARALLEL_WAVES);
         }
     }

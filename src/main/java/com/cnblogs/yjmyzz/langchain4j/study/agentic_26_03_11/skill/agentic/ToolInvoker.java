@@ -5,6 +5,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.ArrayList;
@@ -17,6 +20,7 @@ import java.util.List;
  */
 public final class ToolInvoker {
 
+    private static final Logger log = LoggerFactory.getLogger(ToolInvoker.class);
     private static final ObjectMapper JSON = new ObjectMapper();
 
     private ToolInvoker() {}
@@ -42,6 +46,9 @@ public final class ToolInvoker {
             Object out = m.invoke(tool, args);
             return out == null ? null : out.toString();
         } catch (Exception e) {
+            if (log.isDebugEnabled()) {
+                log.debug("Tool invoke failed, tool={}", tool != null ? tool.getClass().getSimpleName() : "null", e);
+            }
             return null;
         }
     }
@@ -61,6 +68,9 @@ public final class ToolInvoker {
             Object out = m.invoke(tool, input != null ? input : "");
             return out == null ? null : out.toString();
         } catch (Exception e) {
+            if (log.isDebugEnabled()) {
+                log.debug("Tool invokeWithSingleStringArg failed, tool={}", tool != null ? tool.getClass().getSimpleName() : "null", e);
+            }
             return null;
         }
     }

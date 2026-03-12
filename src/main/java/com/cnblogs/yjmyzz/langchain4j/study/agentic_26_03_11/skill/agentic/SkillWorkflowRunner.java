@@ -75,6 +75,10 @@ public class SkillWorkflowRunner {
         if (steps == null || steps.isEmpty()) {
             return skillInput != null ? skillInput : "";
         }
+        int inputLen = skillInput != null ? skillInput.length() : 0;
+        if (log.isDebugEnabled()) {
+            log.debug("[SkillWorkflow] run start steps={} inputLen={} workflowTimeoutMs={}", steps.size(), inputLen, workflowTimeoutMs <= 0 ? -1 : workflowTimeoutMs);
+        }
         UntypedAgent workflow = buildSequence(steps);
         Map<String, Object> input = new LinkedHashMap<>();
         input.put(Agentic311Constants.ScopeKeys.SKILL_INPUT, skillInput != null ? skillInput : "");
@@ -86,11 +90,16 @@ public class SkillWorkflowRunner {
             if (ErrorPayloads.isErrorPayload(resultStr)) {
                 return ErrorPayloads.toFriendlyMessage(resultStr);
             }
-            return resultStr != null ? resultStr : "";
+            String out = resultStr != null ? resultStr : "";
+            if (log.isDebugEnabled()) {
+                log.debug("[SkillWorkflow] run done resultLen={}", out.length());
+            }
+            return out;
         } catch (StepValidationException e) {
             throw e;
         } catch (Exception e) {
-            log.warn("Skill workflow invoke failed", e);
+            String msg = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+            log.warn("[SkillWorkflow] invoke failed, steps={} inputLen={}, error={}", steps.size(), inputLen, msg, e);
             return "";
         }
     }
@@ -105,6 +114,9 @@ public class SkillWorkflowRunner {
         List<Object> subAgents = new ArrayList<>();
         String firstInputKey = Agentic311Constants.ScopeKeys.SKILL_INPUT;
         for (StepDef step : steps) {
+            if (log.isDebugEnabled()) {
+                log.debug("[SkillWorkflow] building step stepId={}", step.id());
+            }
             String stepResultKey = stepResultKey(step.id());
             Class<? extends SubAgent> agentClass = subAgentRegistry.getAgentClass(step.agentId());
             final String prevKey = firstInputKey;
@@ -173,7 +185,7 @@ public class SkillWorkflowRunner {
             try {
                 action.run(scope);
             } catch (Exception e) {
-                log.warn("Step beforeStep failed, catch and continue: stepId={}", stepId, e);
+                log.warn("[SkillWorkflow] beforeStep failed, catch and continue stepId={} error={}", stepId, e.getMessage(), e);
                 scope.writeState(Agentic311Constants.ScopeKeys.CURRENT_STEP_INPUT, formatErrorPayload(stepId, e));
             }
         });
@@ -187,7 +199,7 @@ public class SkillWorkflowRunner {
             try {
                 action.run(scope);
             } catch (Exception e) {
-                log.warn("Step afterStep failed, catch and continue: stepId={} resultKey={}", stepId, stepResultKey, e);
+                log.warn("[SkillWorkflow] afterStep failed, catch and continue stepId={} resultKey={} error={}", stepId, stepResultKey, e.getMessage(), e);
             }
         });
     }
@@ -214,9 +226,10 @@ public class SkillWorkflowRunner {
                 } catch (Exception e) {
                     lastException = e;
                     if (attempt < maxAttempts) {
-                        log.warn("Step agent attempt {}/{} failed, retrying: stepId={}", attempt, maxAttempts, stepId, e);
+                        log.debug("[SkillWorkflow] step agent attempt {}/{} failed, retrying stepId={} error={}", attempt, maxAttempts, stepId, e.getMessage());
                     } else {
-                        log.warn("Step agent failed after {} attempt(s): stepId={}", maxAttempts, stepId, e);
+                        String errMsg = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+                        log.warn("[SkillWorkflow] step agent failed after {} attempt(s) stepId={} error={}", maxAttempts, stepId, errMsg, e);
                     }
                 }
             }
@@ -251,9 +264,10 @@ public class SkillWorkflowRunner {
                 } catch (Exception e) {
                     lastException = e;
                     if (attempt < maxAttempts) {
-                        log.warn("Step agent attempt {}/{} failed, retrying: stepId={}", attempt, maxAttempts, stepId, e);
+                        log.debug("[SkillWorkflow] step builtAgent attempt {}/{} failed, retrying stepId={} error={}", attempt, maxAttempts, stepId, e.getMessage());
                     } else {
-                        log.warn("Step agent failed after {} attempt(s): stepId={}", maxAttempts, stepId, e);
+                        String errMsg = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+                        log.warn("[SkillWorkflow] step builtAgent failed after {} attempt(s) stepId={} error={}", maxAttempts, stepId, errMsg, e);
                     }
                 }
             }

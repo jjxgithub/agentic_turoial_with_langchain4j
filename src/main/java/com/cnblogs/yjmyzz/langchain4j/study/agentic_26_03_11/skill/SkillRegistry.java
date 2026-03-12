@@ -1,5 +1,8 @@
 package com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -9,6 +12,8 @@ import java.util.Optional;
  * 默认使用 LLM 路由（{@link LlmSkillMatcher}），符合行业通用做法。
  */
 public class SkillRegistry {
+
+    private static final Logger log = LoggerFactory.getLogger(SkillRegistry.class);
 
     private final List<Skill> skills = new ArrayList<>();
     private final SkillMatcher matcher;
@@ -31,7 +36,13 @@ public class SkillRegistry {
 
     /** 使用配置的匹配策略（如 LLM 路由）返回命中的 skill。 */
     public Optional<Skill> findMatch(String executableQuestion) {
-        return matcher.findMatch(executableQuestion, getAll());
+        Optional<Skill> result = matcher.findMatch(executableQuestion, getAll());
+        if (log.isDebugEnabled()) {
+            int questionLen = executableQuestion != null ? executableQuestion.length() : 0;
+            String skillId = result.map(Skill::id).orElse("none");
+            log.debug("[SkillRegistry] findMatch questionLen={} skillId={}", questionLen, skillId);
+        }
+        return result;
     }
 
     public List<Skill> getAll() {

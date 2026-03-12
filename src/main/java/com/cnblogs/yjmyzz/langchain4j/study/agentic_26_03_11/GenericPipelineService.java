@@ -76,7 +76,9 @@ public class GenericPipelineService {
             // Step 3: 子问题拆分
             String planJson = planPlanner.plan(executableQuestion);
             PlanSchema plan = planInterpreter.parsePlan(planJson);
-            log.info("子问题拆分:"+JSON.toJSONString(plan));
+            if (log.isDebugEnabled()) {
+                log.debug("子问题拆分 tasks={} execution={}", plan.tasks() != null ? plan.tasks().size() : 0, plan.execution());
+            }
             if (plan.tasks().isEmpty()) {
                 sendEvent(emitter, "plan_done", "{\"summary\":\"未拆分子任务\"}");
                 emitter.complete();
@@ -110,7 +112,8 @@ public class GenericPipelineService {
             }
             emitter.complete();
         } catch (Exception e) {
-            log.warn("chat error, sessionId={}", sessionId, e);
+            String errMsg = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+            log.warn("chat error sessionId={} error={}", sessionId, errMsg, e);
             try {
                 sendEvent(emitter, "error", e.getMessage());
             } catch (IOException ignored) {

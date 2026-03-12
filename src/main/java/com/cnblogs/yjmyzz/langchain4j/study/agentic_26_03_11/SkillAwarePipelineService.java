@@ -115,7 +115,8 @@ public class SkillAwarePipelineService {
             sendEvent(emitter, "plan_done", objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(results));
             emitter.complete();
         } catch (Exception e) {
-            log.warn("skill-aware chat error, sessionId={}", sessionId, e);
+            String errMsg = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+            log.warn("skill-aware chat error sessionId={} error={}", sessionId, errMsg, e);
             try { sendEvent(emitter, "error", e.getMessage()); } catch (IOException ignored) {}
             emitter.completeWithError(e);
         }
