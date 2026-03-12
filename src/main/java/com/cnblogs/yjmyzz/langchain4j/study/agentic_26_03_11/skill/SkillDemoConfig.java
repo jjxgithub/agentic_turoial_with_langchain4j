@@ -1,5 +1,6 @@
 package com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill;
 
+import com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill.agentic.report.ReportQuerySkillHandler;
 import com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill.demo.GreetingSkillHandler;
 import com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill.demo.FarewellSkillHandler;
 import dev.langchain4j.model.chat.ChatModel;
@@ -40,10 +41,12 @@ public class SkillDemoConfig {
     @Bean
     public SkillHandlerRegistry skillHandlerRegistry(
             GreetingSkillHandler greetingSkillHandler,
-            FarewellSkillHandler farewellSkillHandler) {
+            FarewellSkillHandler farewellSkillHandler,
+            ReportQuerySkillHandler reportQuerySkillHandler) {
         return new SkillHandlerRegistry()
                 .register("greeting", greetingSkillHandler)
-                .register("farewell", farewellSkillHandler);
+                .register("farewell", farewellSkillHandler)
+                .register("report_query", reportQuerySkillHandler);
     }
 
     /** LLM 技能路由：根据用户输入与技能描述选择最匹配的 skill id。 */
