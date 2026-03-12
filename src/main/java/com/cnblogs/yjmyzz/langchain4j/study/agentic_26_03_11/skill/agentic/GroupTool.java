@@ -37,7 +37,7 @@ public final class GroupTool {
             int maxAttempts = 1 + Math.max(0, member.retryCount());
             for (int attempt = 1; attempt <= maxAttempts; attempt++) {
                 try {
-                    String result = ToolInvoker.invokeWithSingleStringArg(member.tool(), input);
+                    String result = ToolInvoker.invoke(member.tool(), input);
                     if (result != null && !emptyResult.test(result)) {
                         return result;
                     }
