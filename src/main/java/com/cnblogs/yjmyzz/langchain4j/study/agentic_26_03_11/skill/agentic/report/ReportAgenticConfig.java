@@ -1,0 +1,91 @@
+package com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill.agentic.report;
+
+import com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill.agentic.SkillWorkflowRunner;
+import com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill.agentic.StepProcessorRegistry;
+import com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill.agentic.SubAgentRegistry;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.service.AiServices;
+import jakarta.annotation.PostConstruct;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+/**
+ * 报表查询 skill 的 agentic 配置：注册 4 步 SubAgent 类与 4 个 StepProcessor（前/后处理），并暴露 ReportQuerySkillHandler。
+ */
+@Configuration
+public class ReportAgenticConfig {
+
+    public static final String AGENT_SEMANTIC_PARSE = "semantic_parse";
+    public static final String AGENT_INTENT_EXTRACT = "intent_extract";
+    public static final String AGENT_ALIGN = "align";
+    public static final String AGENT_REPORT_PARSE = "report_parse";
+
+    public static final String PROCESSOR_SEMANTIC = "report_semantic";
+    public static final String PROCESSOR_INTENT = "report_intent";
+    public static final String PROCESSOR_ALIGN = "report_align";
+    public static final String PROCESSOR_REPORT_PARSE = "report_report_parse";
+
+    private final SubAgentRegistry subAgentRegistry;
+    private final StepProcessorRegistry stepProcessorRegistry;
+    private final SemanticParseStepProcessor semanticParseStepProcessor;
+    private final IntentExtractStepProcessor intentExtractStepProcessor;
+    private final AlignStepProcessor alignStepProcessor;
+    private final ReportParseStepProcessor reportParseStepProcessor;
+
+    public ReportAgenticConfig(
+            SubAgentRegistry subAgentRegistry,
+            StepProcessorRegistry stepProcessorRegistry,
+            SemanticParseStepProcessor semanticParseStepProcessor,
+            IntentExtractStepProcessor intentExtractStepProcessor,
+            AlignStepProcessor alignStepProcessor,
+            ReportParseStepProcessor reportParseStepProcessor) {
+        this.subAgentRegistry = subAgentRegistry;
+        this.stepProcessorRegistry = stepProcessorRegistry;
+        this.semanticParseStepProcessor = semanticParseStepProcessor;
+        this.intentExtractStepProcessor = intentExtractStepProcessor;
+        this.alignStepProcessor = alignStepProcessor;
+        this.reportParseStepProcessor = reportParseStepProcessor;
+    }
+
+    @PostConstruct
+    public void init() {
+        subAgentRegistry
+                .register(AGENT_SEMANTIC_PARSE, SemanticParseAgent.class)
+                .register(AGENT_INTENT_EXTRACT, IntentExtractAgent.class)
+                .register(AGENT_ALIGN, AlignAgent.class)
+                .register(AGENT_REPORT_PARSE, ReportParseAgent.class);
+        stepProcessorRegistry
+                .register(PROCESSOR_SEMANTIC, semanticParseStepProcessor)
+                .register(PROCESSOR_INTENT, intentExtractStepProcessor)
+                .register(PROCESSOR_ALIGN, alignStepProcessor)
+                .register(PROCESSOR_REPORT_PARSE, reportParseStepProcessor);
+    }
+
+    @Bean
+    public SemanticParseAgent semanticParseAgent(ChatModel chatModel) {
+        return AiServices.builder(SemanticParseAgent.class).chatModel(chatModel).build();
+    }
+
+    @Bean
+    public IntentExtractAgent intentExtractAgent(ChatModel chatModel) {
+        return AiServices.builder(IntentExtractAgent.class).chatModel(chatModel).build();
+    }
+
+    @Bean
+    public AlignAgent alignAgent(ChatModel chatModel) {
+        return AiServices.builder(AlignAgent.class).chatModel(chatModel).build();
+    }
+
+    @Bean
+    public ReportParseAgent reportParseAgent(ChatModel chatModel) {
+        return AiServices.builder(ReportParseAgent.class).chatModel(chatModel).build();
+    }
+
+    @Bean
+    public ReportQuerySkillHandler reportQuerySkillHandler(SkillWorkflowRunner skillWorkflowRunner) {
+        return new ReportQuerySkillHandler(skillWorkflowRunner);
+    }
+
+
+
+}
