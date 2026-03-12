@@ -141,9 +141,9 @@ public class SkillWorkflowRunner {
                         builder = builder.tools(tool);
                     }
                 }
-                Object builtAgent = builder.build();
-                // 统一重试：builder 路径也按 agentRetryCount 包装；catchAgentError 时写错误 payload
-                subAgents.add(agentActionInvokeBuiltAgent(step.id(), stepResultKey, step.agentRetryCount(), stepTimeoutMs, step.catchAgentError(), (UntypedAgent) builtAgent));
+                // builder.build() 返回实现 SubAgent 的 JDK 代理，按 SubAgent.execute(input) 调用并统一重试/超时
+                SubAgent builtAgent = builder.build();
+                subAgents.add(agentActionInvokeAgent(step.id(), stepResultKey, step.agentRetryCount(), stepTimeoutMs, builtAgent));
             }
 
             // 后处理（可选捕获）
