@@ -1,51 +1,99 @@
-# agentic_26_03_11：通用 5 步流水线（澄清 → 补全 → 拆分 → 计划 → agentic 执行）
+# agentic_26_03_11 模块说明
 
-与 `agentic_26_03_10` 同级别，不绑定具体业务领域。**完整支持 sequence、parallel_waves、conditional、supervisor**。
+基于 **Skill 发现 + 多步 Agent 编排** 的通用流水线：问题补全 → 子问题拆分 → 按子问题匹配 Skill → 命中则交该 Skill 的多步 Agent 执行，未命中走通用 Agent。
 
-## 5 步流程
+---
 
-1. **缺条件分析**：`ClarificationAnalyzer` 结合当前 input 与对话记忆，输出 `NEED_CLARIFICATION` 或 `PROCEED`。
-2. **问题补全**：`QuestionReformulator` 在保留用户原文前提下，用记忆补全成一条可执行问题。
-3. **子问题拆分**：`PlanPlanner` 输出 JSON，包含 `execution` 与 `tasks`（每任务可有 `condition`），解析为 `PlanSchema`。
-4. **计划解释**：`PlanInterpreter` 根据 `execution` 与任务依赖/条件，构建 agentic 工作流。
-5. **执行**：运行对应工作流，结果写回 scope 或返回摘要。
+## 一、整体架构
 
-## 计划 Schema
+```
+                    ┌─────────────────────────────────────────────────────────────┐
+                    │                    SkillAwarePipelineService                  │
+                    │  补全 → 拆分(Plan) → 按 task 匹配 Skill → Handler.handle()   │
+                    └─────────────────────────────────────────────────────────────┘
+                                              │
+           ┌──────────────────────────────────┼──────────────────────────────────┐
+           │                                  │                                  │
+           ▼                                  ▼                                  ▼
+   ┌───────────────┐                 ┌───────────────┐                 ┌───────────────┐
+   │ Skill 命中    │                 │ Skill 命中    │                 │ 未命中        │
+   │ greeting      │                 │ report_query  │                 │ 通用 Agent    │
+   └───────┬───────┘                 └───────┬───────┘                 └───────┬───────┘
+           │                                  │                                  │
+           ▼                                  ▼                                  ▼
+   GreetingSkillHandler            ReportQuerySkillHandler              GenericTaskAgent
+   (2 步: 语言→问候)                SkillWorkflowRunner.run(steps)       .execute(question)
+                                           │
+                                           ▼
+                                   ┌───────────────────┐
+                                   │ StepDef 列表      │ ← skills/steps/report_query.json
+                                   │ 语义→意图→对齐→解析│   或 defaultSteps()
+                                   └─────────┬─────────┘
+                                             │
+                                   ┌─────────▼─────────┐
+                                   │ SkillWorkflowRunner│  sequence: 每步 = 前处理 + SubAgent + 后处理
+                                   │ buildSequence()    │  scope: currentStepInput / step_*_result
+                                   └───────────────────┘
+```
 
-- **PlanSchema**  
-  - `tasks`: 子任务列表。  
-  - `execution`: `"sequence"` | `"parallel_waves"` | `"supervisor"`（默认 `parallel_waves`）。
+- **入口**：`SkillAwarePipelineService.chat()` → 补全、拆 plan、对每个 task 做 `skillRegistry.findMatch(question)`。
+- **Skill 定义**：`src/main/resources/skills/*.md`（YAML front matter：id、name、description、handlerId、keywords）。
+- **步骤定义**：可选 `src/main/resources/skills/steps/{handlerId}.json`（StepDef 列表），未配置则用 Handler 内置 defaultSteps()。
+- **平台层**：`skill.agentic` 包内 `SubAgentRegistry`、`StepProcessorRegistry`、`ToolRegistry`、`SkillWorkflowRunner`、`StepDefLoader` 与具体 skill 解耦。
 
-- **TaskSchema**  
-  - `id`, `question`, `dependsOn`（依赖的 taskId 列表）。  
-  - `condition`（可选，单个）：`{ "sourceKey": "A", "op": "contains"|"equals"|"notContains"|"present"|"absent", "value": "雨" }`。  
-  - `conditions`（可选，多个，**全部满足**才执行）：同上结构的数组。具体 sourceKey/op/value 由 LLM 根据用户意图推断，解释器只做通用求值（不绑具体业务）。
+---
 
-## 执行模式与 agentic 映射
+## 二、目录与职责
 
-| execution        | 行为 | agentic 使用 |
-|------------------|------|----------------|
-| **sequence**     | 严格按拓扑序执行，带条件的任务用条件分支 | `sequenceBuilder` + 每步 `agentAction`(写 scope) + 可选 `conditionalBuilder`(condition, agent) |
-| **parallel_waves** | 按层执行：同层多任务在同一 wave 内顺序执行（共享 scope），层间顺序；单任务层走 sequence 步 | 同层多任务：`agentAction` 写各 task 的 question_/context_，再 `agentAction` 内用 `directTaskAgent.execute` 顺序写回 scope；单任务同 sequence |
-| **supervisor**   | 监督者动态选择下一个子任务 | `supervisorBuilder`，子 agent 为 `sequence(setScope, genericAgent)`，返回摘要（无 per-task scope） |
+| 路径 / 包 | 职责 |
+|-----------|------|
+| **根包** `agentic_26_03_11` | 流水线入口、Plan 解析、Task 编排、常量；Skill 未命中时通用 Agent。 |
+| **skill** | Skill 发现与路由：Skill、SkillRegistry、SkillMatcher（LLM/Keyword）、SkillHandler、SkillHandlerRegistry、SKILL.md 加载。 |
+| **skill.agentic** | 平台层：StepDef、SubAgent、SkillWorkflowRunner、StepDefLoader、ToolRegistry、GroupTool、重试/超时。 |
+| **skill.agentic.report** | 报表查询 Skill：4 个 SubAgent、4 个 StepProcessor、ReportQuerySkillHandler、ReportAgenticConfig。 |
+| **skill.demo** | Demo Skill：打招呼/告别 Handler 与 Step。 |
+| **tools** | 供 step 挂载的 Tool（如 RelativeTimeResolverTool、WeatherQueryTool311）。 |
 
-## 依赖是否成功：Judge Agent（不穷举关键词）
+---
 
-每个任务执行后，会**自动**调用通用 **DependencySuccessJudge**：根据「任务描述 + 执行结果」判断该任务是否成功，仅输出 `SUCCESS` 或 `FAILURE`，写入 scope 的 `{taskId}_judge`。  
-后续任务若依赖该任务，解释器会**先**要求所有依赖的 `_judge` 均为 `SUCCESS`，再按 plan 的 condition/conditions 求值；任一依赖被判为 FAILURE 则不会执行当前任务。  
-不依赖关键词穷举，由 LLM 理解语义（如「无法直接查询」→ FAILURE）。
+## 三、流水线 5 步（概要）
 
-## 条件求值（ConditionSchema）
+1. **问题补全**：`QuestionReformulator` 产出可执行问题。
+2. **子问题拆分**：`PlanPlanner` 输出 JSON（execution + tasks），解析为 `PlanSchema`。
+3. **计划解释**：`PlanInterpreter` 拓扑排序、依赖与条件求值（可选）。
+4. **按 task 执行**：对每个 task 的 question 做 `skillRegistry.findMatch(question)`；命中则 `skill.handler().handle(question, singleTaskPlan)`，未命中则 `directTaskAgent.execute(question, context)`。
+5. **Skill 内执行**：Handler 内多为 `SkillWorkflowRunner.run(steps, question)`，steps 来自 JSON 或 defaultSteps()，Runner 用 langchain4j-agentic 的 sequence 按步执行（每步可带前/后处理、Tool、重试、超时）。
 
-在 scope 上读取 `sourceKey` 对应值，再按 `op` 与 `value` 比较：
+---
 
-- `contains` / `notContains`：字符串包含/不包含。  
-- `equals`：字符串相等。  
-- `present` / `absent`：存在且非空 / 不存在或空（可省略 value）。
+## 四、Skill 定义（md）
 
-## 入口
+- **位置**：`src/main/resources/skills/*.md`。
+- **格式**：YAML front matter + 正文（可选）。必填：`id`、`handlerId`；建议：`name`、`description`、`keywords`。
+- **加载**：启动时 `SkillMarkdownLoader.loadFromClasspath("classpath*:skills/*.md", skillHandlerRegistry)`，按 handlerId 绑定 Handler，注入 `SkillRegistry`。
+- **匹配**：默认 `LlmSkillMatcher`（LLM 根据技能列表与用户问题返回 skill id）；可切换 `KeywordSkillMatcher`。
 
-- **REST**：`POST /api/agentic_26_03_11/chat/stream`  
-  请求体：`{"sessionId":"xxx","input":"用户输入"}`  
-  响应（SSE）：`clarification` / `intent_clear` → `plan` → `task_start` / `task_result` / `task_end` → `plan_done` 或 `error`。  
-  supervisor 模式下 `plan_done` 为监督者摘要，无逐任务 result。
+详见 [skill/README.md](skill/README.md)。现有 skill：`greeting`、`farewell`、`report_query`。
+
+---
+
+## 五、步骤配置（JSON，可选）
+
+- **位置**：`src/main/resources/skills/steps/{handlerId}.json`，例如 `report_query.json`。
+- **格式**：`{ "steps": [ { "id", "name", "agentId", "preProcessorId?", "postProcessorId?", "catchBeforeStepError?", "catchAgentError?", "catchAfterStepError?", "agentRetryCount?", "toolIds?", "stepTimeoutMs?" } ] }`。
+- **约定**：`stepTimeoutMs` 为 -1 表示不超时；agentId / preProcessorId / postProcessorId 须在对应 Registry 中注册。
+
+---
+
+## 六、入口与事件流
+
+- **REST**：`POST /api/agentic_26_03_11/skill-aware/stream`  
+  请求体：`{"sessionId":"xxx","input":"用户输入"}`。  
+  响应（SSE）：`intent_clear` → `plan` → 对每个 task：`task_start` →（若命中）`skill_matched` → `task_result` → `task_end` → … → `plan_done`。
+
+---
+
+## 七、相关文档
+
+- [skill/README.md](skill/README.md)：Skill 发现与路由、SKILL.md 约定、扩展新 Skill。
+- [AGENT_DEVELOPMENT.md](AGENT_DEVELOPMENT.md)：与报表分析同类的 Agent 开发流程与架构图（SubAgent、StepProcessor、步骤 JSON、配置注册）。
