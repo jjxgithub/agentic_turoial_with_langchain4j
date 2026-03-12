@@ -8,6 +8,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
 /**
  * 通用 Skill + SubAgent 编排配置：注册 SubAgentRegistry、StepProcessorRegistry、ToolRegistry 与 SkillWorkflowRunner，供各 skill 注入并注册步骤 Agent 及可选前/后处理、按 StepDef.toolIds 挂载 tools。
  */
@@ -35,13 +38,24 @@ public class SkillAgenticConfig {
         return new StepDefLoader(objectMapper);
     }
 
+    /** Step/Workflow 超时用的线程池，应用关闭时自动 shutdown（destroyMethod）。 */
+    @Bean(destroyMethod = "shutdown")
+    public ExecutorService skillStepTimeoutExecutor() {
+        return Executors.newCachedThreadPool(r -> {
+            Thread t = new Thread(r, "skill-step-timeout");
+            t.setDaemon(false);
+            return t;
+        });
+    }
+
     @Bean
     public SkillWorkflowRunner skillWorkflowRunner(
             ChatModel chatModel,
             SubAgentRegistry subAgentRegistry,
             StepProcessorRegistry stepProcessorRegistry,
             @Autowired(required = false) SubAgentInstanceRegistry subAgentInstanceRegistry,
-            @Autowired(required = false) ToolRegistry toolRegistry) {
-        return new SkillWorkflowRunner(chatModel, subAgentRegistry, stepProcessorRegistry, subAgentInstanceRegistry, toolRegistry);
+            @Autowired(required = false) ToolRegistry toolRegistry,
+            @Autowired(required = false) ExecutorService skillStepTimeoutExecutor) {
+        return new SkillWorkflowRunner(chatModel, subAgentRegistry, stepProcessorRegistry, subAgentInstanceRegistry, toolRegistry, skillStepTimeoutExecutor);
     }
 }

@@ -77,6 +77,7 @@ public class ToolRegistry {
         if (def == null) return null;
         List<GroupTool.Member> members = metaById.entrySet().stream()
                 .filter(e -> groupId.equals(e.getValue().groupId()))
+                .filter(e -> byId.get(e.getKey()) != null)
                 .sorted(Comparator.comparingInt(e -> e.getValue().priority()))
                 .map(e -> new GroupTool.Member(byId.get(e.getKey()), e.getValue().retryCount()))
                 .collect(Collectors.toList());

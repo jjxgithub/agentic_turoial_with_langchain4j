@@ -60,7 +60,7 @@ public class StepDefLoader {
     }
 
     /**
-     * 解析 JSON 为 List&lt;StepDef&gt;。期望格式：{ "steps": [ { "id", "name", "agentId", "preProcessorId?", "postProcessorId?", "catchBeforeStepError?", "catchAgentError?", "catchAfterStepError?", "agentRetryCount?", "toolIds"? } ] }
+     * 解析 JSON 为 List&lt;StepDef&gt;。期望格式：{ "steps": [ { "id", "name", "agentId", "preProcessorId?", "postProcessorId?", "catchBeforeStepError?", "catchAgentError?", "catchAfterStepError?", "agentRetryCount?", "toolIds?", "stepTimeoutMs"? } ] }
      */
     public List<StepDef> parse(String json) {
         if (json == null || json.isBlank()) return null;
@@ -96,13 +96,15 @@ public class StepDefLoader {
         boolean catchAfterStepError = node.has("catchAfterStepError") && node.get("catchAfterStepError").asBoolean(false);
         int agentRetryCount = node.has("agentRetryCount") ? node.get("agentRetryCount").asInt(0) : 0;
         if (agentRetryCount < 0) agentRetryCount = 0;
+        long stepTimeoutMs = node.has("stepTimeoutMs") ? node.get("stepTimeoutMs").asLong(StepDef.NO_TIMEOUT_MS) : StepDef.NO_TIMEOUT_MS;
+        if (stepTimeoutMs < -1) stepTimeoutMs = StepDef.NO_TIMEOUT_MS;
         List<String> toolIds = null;
         if (node.has("toolIds") && node.get("toolIds").isArray()) {
             List<String> list = new ArrayList<>();
             node.get("toolIds").forEach(t -> list.add(t.asText("")));
             toolIds = list.stream().filter(s -> s != null && !s.isBlank()).toList();
         }
-        return new StepDef(id, name, agentId, preProcessorId, postProcessorId, catchBeforeStepError, catchAgentError, catchAfterStepError, agentRetryCount, toolIds != null ? toolIds : List.of());
+        return new StepDef(id, name, agentId, preProcessorId, postProcessorId, catchBeforeStepError, catchAgentError, catchAfterStepError, agentRetryCount, toolIds != null ? toolIds : List.of(), stepTimeoutMs);
     }
 
     private static String text(JsonNode node, String key) {
