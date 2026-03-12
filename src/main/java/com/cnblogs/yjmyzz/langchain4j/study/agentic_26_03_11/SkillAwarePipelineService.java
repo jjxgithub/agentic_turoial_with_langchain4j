@@ -3,10 +3,12 @@ package com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -15,8 +17,8 @@ import com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill.Skill;
 import com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill.SkillRegistry;
 
 /**
- * 在「问题补全 → 拆分 → 编排」之后，通过 skill 列表发现应由哪个 Agent 处理；
- * 若命中 skill，则交给该 skill 的 Agent（内部可多步）执行，否则走通用 plan 执行。
+ * 在「问题补全 → 拆分 → 编排」之后，按子问题（每个 task）做 skill 匹配：
+ * 每个子任务用其 question 匹配一次，命中则交该 skill 的 Agent 执行，否则走通用 Agent。
  */
 @Service
 public class SkillAwarePipelineService {
@@ -29,6 +31,7 @@ public class SkillAwarePipelineService {
     private final PlanPlanner planPlanner;
     private final PlanInterpreter planInterpreter;
     private final SkillRegistry skillRegistry;
+    private final GenericTaskAgent directTaskAgent;
     private final ObjectMapper objectMapper;
 
     public SkillAwarePipelineService(
@@ -37,12 +40,14 @@ public class SkillAwarePipelineService {
             PlanPlanner planPlanner,
             PlanInterpreter planInterpreter,
             SkillRegistry skillRegistry,
+            @Qualifier("genericTaskAgentForDirectCall") GenericTaskAgent directTaskAgent,
             ObjectMapper objectMapper) {
         this.clarificationAnalyzer = clarificationAnalyzer;
         this.questionReformulator = questionReformulator;
         this.planPlanner = planPlanner;
         this.planInterpreter = planInterpreter;
         this.skillRegistry = skillRegistry;
+        this.directTaskAgent = directTaskAgent;
         this.objectMapper = objectMapper;
     }
 
@@ -80,39 +85,50 @@ public class SkillAwarePipelineService {
             }
             sendEvent(emitter, "plan", objectMapper.writeValueAsString(plan));
 
-            Optional<Skill> matched = skillRegistry.findMatch(userInput);
-            if (matched.isPresent()) {
-                Skill skill = matched.get();
-                sendEvent(emitter, "skill_matched", skill.id());
-                String result = skill.handler().handle(executableQuestion, plan);
-                sendEvent(emitter, "plan_done", result != null ? result : "{\"summary\":\"skill 执行完成\"}");
-            } else {
-                List<TaskSchema> sorted = planInterpreter.topologicalSort(plan);
-                for (TaskSchema t : sorted) sendEvent(emitter, "task_start", t.id());
-                Map<String, Object> results = planInterpreter.execute(plan, executableQuestion);
-                if (results.containsKey("supervisorSummary")) {
-                    sendEvent(emitter, "plan_done", String.valueOf(results.get("supervisorSummary")));
+            List<TaskSchema> sorted = planInterpreter.topologicalSort(plan);
+            Map<String, Object> results = new LinkedHashMap<>();
+            for (TaskSchema t : sorted) {
+                sendEvent(emitter, "task_start", t.id());
+                String taskQuestion = t.question() != null ? t.question() : "";
+                Optional<Skill> matched = skillRegistry.findMatch(taskQuestion);
+                String resultStr;
+                if (matched.isPresent()) {
+                    Skill skill = matched.get();
+                    sendEvent(emitter, "skill_matched", skill.id());
+                    PlanSchema singleTaskPlan = new PlanSchema(List.of(t), PlanSchema.EXECUTION_SEQUENCE);
+                    String result = skill.handler().handle(taskQuestion, singleTaskPlan);
+                    resultStr = result != null ? result : "";
                 } else {
-                    for (TaskSchema t : sorted) {
-                        Object r = results.get(t.id());
-                        String resultStr = r != null ? r.toString() : "";
-                        String taskResultJson = objectMapper.createObjectNode()
-                                .put("taskId", t.id())
-                                .put("question", t.question())
-                                .put("result", resultStr)
-                                .toString();
-                        sendEvent(emitter, "task_result", taskResultJson);
-                        sendEvent(emitter, "task_end", t.id());
-                    }
-                    sendEvent(emitter, "plan_done", objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(results));
+                    String context = buildContextFromDependencies(t.dependsOn(), results);
+                    resultStr = directTaskAgent.execute(taskQuestion, context);
+                    if (resultStr == null) resultStr = "";
                 }
+                results.put(t.id(), resultStr);
+                String taskResultJson = objectMapper.createObjectNode()
+                        .put("taskId", t.id())
+                        .put("question", taskQuestion)
+                        .put("result", resultStr)
+                        .toString();
+                sendEvent(emitter, "task_result", taskResultJson);
+                sendEvent(emitter, "task_end", t.id());
             }
+            sendEvent(emitter, "plan_done", objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(results));
             emitter.complete();
         } catch (Exception e) {
             log.warn("skill-aware chat error, sessionId={}", sessionId, e);
             try { sendEvent(emitter, "error", e.getMessage()); } catch (IOException ignored) {}
             emitter.completeWithError(e);
         }
+    }
+
+    private static String buildContextFromDependencies(List<String> dependsOn, Map<String, Object> results) {
+        if (dependsOn == null || dependsOn.isEmpty()) return "（无）";
+        StringBuilder sb = new StringBuilder();
+        for (String id : dependsOn) {
+            Object v = results.get(id);
+            sb.append("[").append(id).append("] ").append(v != null ? v : "").append("\n");
+        }
+        return sb.length() > 0 ? sb.toString() : "（无）";
     }
 
     private static void sendEvent(SseEmitter emitter, String eventType, String data) throws IOException {

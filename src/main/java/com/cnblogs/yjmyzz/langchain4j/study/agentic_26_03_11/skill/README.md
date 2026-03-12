@@ -38,7 +38,7 @@ keywords:
 - **greeting**：`skills/greeting.md`，handlerId=greeting → `GreetingSkillHandler`（内部两步：识别语言 → 生成问候）。
 - **farewell**：`skills/farewell.md`，handlerId=farewell → `FarewellSkillHandler`（单步：生成道别回复）。
 - **接口**：`POST /api/agentic_26_03_11/skill-aware/stream`，Body：`{ "sessionId": "x", "input": "你好呀" }` 或 `"再见"`。
-- **事件流**：clarification（如需）→ intent_clear → plan → **skill_matched**（命中的 skill id）→ plan_done。
+- **事件流**：clarification（如需）→ intent_clear → plan → 对每个子任务：task_start → 若命中 skill 则 **skill_matched**（该任务的 skill id）→ task_result → task_end → … → plan_done。匹配按**子问题**（每个 task 的 question）进行，不是对整句用户输入只匹配一次。
 
 ## 扩展新 Skill（含报表）
 
