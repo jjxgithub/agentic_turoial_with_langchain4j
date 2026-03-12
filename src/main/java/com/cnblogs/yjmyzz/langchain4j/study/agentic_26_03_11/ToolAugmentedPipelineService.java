@@ -24,6 +24,7 @@ public class ToolAugmentedPipelineService {
     private final QuestionReformulator questionReformulator;
     private final PlanPlanner planPlanner;
     private final PlanInterpreterWithTools planInterpreterWithTools;
+    private final ResultSummaryAgent311 resultSummaryAgent311;
     private final ObjectMapper objectMapper;
 
     public ToolAugmentedPipelineService(
@@ -31,11 +32,13 @@ public class ToolAugmentedPipelineService {
             QuestionReformulator questionReformulator,
             PlanPlanner planPlanner,
             PlanInterpreterWithTools planInterpreterWithTools,
+            ResultSummaryAgent311 resultSummaryAgent311,
             ObjectMapper objectMapper) {
         this.clarificationAnalyzer = clarificationAnalyzer;
         this.questionReformulator = questionReformulator;
         this.planPlanner = planPlanner;
         this.planInterpreterWithTools = planInterpreterWithTools;
+        this.resultSummaryAgent311 = resultSummaryAgent311;
         this.objectMapper = objectMapper;
     }
 
@@ -84,6 +87,7 @@ public class ToolAugmentedPipelineService {
             if (results.containsKey("supervisorSummary")) {
                 sendEvent(emitter, "plan_done", String.valueOf(results.get("supervisorSummary")));
             } else {
+                StringBuilder resultsText = new StringBuilder();
                 for (TaskSchema t : sorted) {
                     Object r = results.get(t.id());
                     String resultStr = r != null ? r.toString() : "";
@@ -94,9 +98,16 @@ public class ToolAugmentedPipelineService {
                             .toString();
                     sendEvent(emitter, "task_result", taskResultJson);
                     sendEvent(emitter, "task_end", t.id());
+                    resultsText.append("- [").append(t.id()).append("] ").append(t.question()).append(" → ").append(resultStr).append("\n");
                 }
-                String summary = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(results);
-                sendEvent(emitter, "plan_done", summary);
+                String summaryText;
+                try {
+                    summaryText = resultSummaryAgent311.summarize(executableQuestion, resultsText.toString());
+                } catch (Exception e) {
+                    log.warn("result summary agent failed, fallback to raw results", e);
+                    summaryText = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(results);
+                }
+                sendEvent(emitter, "plan_done", summaryText);
             }
             emitter.complete();
         } catch (Exception e) {

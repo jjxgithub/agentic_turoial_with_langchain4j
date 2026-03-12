@@ -24,4 +24,12 @@ public class Agentic26_03_11ToolsConfig {
                 .tools(weatherQueryTool311, emailNotifyTool311)
                 .build();
     }
+
+    /** 执行结果汇总 Agent，供 ToolAugmentedPipelineService 在 plan 完成后生成自然语言汇总。 */
+    @Bean
+    public ResultSummaryAgent311 resultSummaryAgent311(ChatModel chatModel) {
+        return AiServices.builder(ResultSummaryAgent311.class)
+                .chatModel(chatModel)
+                .build();
+    }
 }
