@@ -1,0 +1,33 @@
+{
+  "steps": [
+    {
+      "id": "semantic_parse",
+      "name": "语义解析",
+      "agentId": "semantic_parse",
+      "preProcessorId": "report_semantic",
+      "postProcessorId": "report_semantic"
+    },
+    {
+      "id": "intent_extract",
+      "name": "意图提取",
+      "agentId": "intent_extract",
+      "preProcessorId": "report_intent",
+      "postProcessorId": "report_intent"
+    },
+    {
+      "id": "align",
+      "name": "对齐",
+      "agentId": "align",
+      "preProcessorId": "report_align",
+      "postProcessorId": "report_align"
+    },
+    {
+      "id": "report_parse",
+      "name": "报表解析",
+      "agentId": "report_parse",
+      "preProcessorId": "report_report_parse",
+      "postProcessorId": "report_report_parse",
+      "toolIds": ["relativeTimeResolver"]
+    }
+  ]
+}

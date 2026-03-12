@@ -2,6 +2,7 @@ package com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill.agentic;
 
 import com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.Agentic311Constants;
 import com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.tools.RelativeTimeResolverTool;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.model.chat.ChatModel;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -26,6 +27,12 @@ public class SkillAgenticConfig {
     @Bean
     public ToolRegistry toolRegistry(RelativeTimeResolverTool relativeTimeResolverTool) {
         return new ToolRegistry().register(Agentic311Constants.ToolIds.RELATIVE_TIME_RESOLVER, relativeTimeResolverTool);
+    }
+
+    /** 步骤配置外置：从 classpath:skills/steps/{skillId}.json 加载，供各 skill handler 使用。 */
+    @Bean
+    public StepDefLoader stepDefLoader(ObjectMapper objectMapper) {
+        return new StepDefLoader(objectMapper);
     }
 
     @Bean

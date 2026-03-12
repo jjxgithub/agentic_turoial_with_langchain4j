@@ -64,8 +64,13 @@ public class SkillWorkflowRunner {
         input.put(Agentic311Constants.ScopeKeys.SKILL_INPUT, skillInput != null ? skillInput : "");
         try {
             Object result = workflow.invoke(input);
-            if (result instanceof String) return (String) result;
-            return result != null ? result.toString() : "";
+            String resultStr = result instanceof String ? (String) result : (result != null ? result.toString() : "");
+            if (ErrorPayloads.isErrorPayload(resultStr)) {
+                return ErrorPayloads.toFriendlyMessage(resultStr);
+            }
+            return resultStr != null ? resultStr : "";
+        } catch (StepValidationException e) {
+            throw e;
         } catch (Exception e) {
             log.warn("Skill workflow invoke failed", e);
             return "";
@@ -75,19 +80,15 @@ public class SkillWorkflowRunner {
     /**
      * 构建 sequence：每步 = [前处理可选] + 写 currentStepInput（或由前处理写入） + SubAgent + [后处理可选]。
      * 当 StepDef 的 catchBeforeStepError/catchAgentError/catchAfterStepError 为 true 时，对应阶段异常被捕获、写约定错误到 scope 并继续下一步。
+     * 构建前会校验每步的 agentId、preProcessorId、postProcessorId 已在对应注册表中注册，否则抛出 {@link StepValidationException}。
      */
     UntypedAgent buildSequence(List<StepDef> steps) {
+        validateSteps(steps);
         List<Object> subAgents = new ArrayList<>();
         String firstInputKey = Agentic311Constants.ScopeKeys.SKILL_INPUT;
         for (StepDef step : steps) {
             String stepResultKey = stepResultKey(step.id());
             Class<? extends SubAgent> agentClass = subAgentRegistry.getAgentClass(step.agentId());
-            if (agentClass == null) {
-                log.warn("No SubAgent registered for agentId={}, stepId={}", step.agentId(), step.id());
-                subAgents.add(AgenticServices.agentAction(scope -> scope.writeState(stepResultKey, "")));
-                firstInputKey = stepResultKey;
-                continue;
-            }
             final String prevKey = firstInputKey;
 
             // 前处理（可选捕获）
@@ -177,6 +178,10 @@ public class SkillWorkflowRunner {
     private Object agentActionInvokeAgent(String stepId, String stepResultKey, int agentRetryCount, SubAgent instance) {
         return AgenticServices.agentAction(scope -> {
             String input = String.valueOf(scope.readState(Agentic311Constants.ScopeKeys.CURRENT_STEP_INPUT, ""));
+            if (ErrorPayloads.isErrorPayload(input)) {
+                scope.writeState(stepResultKey, input);
+                return;
+            }
             int maxAttempts = 1 + Math.max(0, agentRetryCount);
             Exception lastException = null;
             for (int attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -206,6 +211,27 @@ public class SkillWorkflowRunner {
     @FunctionalInterface
     private interface AgentScopeAction {
         void run(AgenticScope scope);
+    }
+
+    /**
+     * 校验步骤列表：每步的 agentId 必须在 SubAgentRegistry 中注册；
+     * 若 preProcessorId/postProcessorId 非空，则必须在 StepProcessorRegistry 中注册。
+     * 不通过则抛出 {@link StepValidationException}，便于配置错误快速失败。
+     */
+    private void validateSteps(List<StepDef> steps) {
+        if (steps == null) return;
+        for (StepDef step : steps) {
+            String stepId = step.id();
+            if (!subAgentRegistry.has(step.agentId())) {
+                throw new StepValidationException(stepId, "agentId='" + step.agentId() + "' not registered in SubAgentRegistry");
+            }
+            if (hasProcessor(step.preProcessorId()) && !stepProcessorRegistry.has(step.preProcessorId())) {
+                throw new StepValidationException(stepId, "preProcessorId='" + step.preProcessorId() + "' not registered in StepProcessorRegistry");
+            }
+            if (hasProcessor(step.postProcessorId()) && !stepProcessorRegistry.has(step.postProcessorId())) {
+                throw new StepValidationException(stepId, "postProcessorId='" + step.postProcessorId() + "' not registered in StepProcessorRegistry");
+            }
+        }
     }
 
     private boolean hasProcessor(String processorId) {

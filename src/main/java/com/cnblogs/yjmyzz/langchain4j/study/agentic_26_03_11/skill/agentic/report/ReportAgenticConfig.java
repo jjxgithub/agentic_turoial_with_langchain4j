@@ -2,9 +2,13 @@ package com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill.agentic.repo
 
 import com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.Agentic311Constants;
 import com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill.agentic.SkillWorkflowRunner;
+import com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill.agentic.StepDef;
+import com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill.agentic.StepDefLoader;
 import com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill.agentic.StepProcessorRegistry;
 import com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill.agentic.SubAgentInstanceRegistry;
 import com.cnblogs.yjmyzz.langchain4j.study.agentic_26_03_11.skill.agentic.SubAgentRegistry;
+
+import java.util.List;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.AiServices;
 import jakarta.annotation.PostConstruct;
@@ -88,7 +92,8 @@ public class ReportAgenticConfig {
     }
 
     @Bean
-    public ReportQuerySkillHandler reportQuerySkillHandler(SkillWorkflowRunner skillWorkflowRunner) {
-        return new ReportQuerySkillHandler(skillWorkflowRunner);
+    public ReportQuerySkillHandler reportQuerySkillHandler(SkillWorkflowRunner skillWorkflowRunner, StepDefLoader stepDefLoader) {
+        List<StepDef> steps = stepDefLoader.load(Agentic311Constants.SkillHandlers.REPORT_QUERY);
+        return new ReportQuerySkillHandler(skillWorkflowRunner, steps);
     }
 }
