@@ -17,6 +17,12 @@ public final class Agentic311Constants {
         public static final String ERROR_PAYLOAD_TEMPLATE = "{\"error\":true,\"stepId\":\"%s\",\"message\":\"%s\"}";
     }
 
+    /** 重试默认：StepDef.agentRetryCount、ToolMeta.retryCount 未指定时均为 0（不重试）。 */
+    public static final class Retry {
+        private Retry() {}
+        public static final int DEFAULT_AGENT_RETRY_COUNT = 0;
+    }
+
     /** StepDef.toolIds 与 ToolRegistry 注册 id。 */
     public static final class ToolIds {
         private ToolIds() {}

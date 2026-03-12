@@ -111,7 +111,7 @@ public class SkillWorkflowRunner {
 
             SubAgent instance = (!useTools && instanceRegistry != null) ? instanceRegistry.get(step.agentId()) : null;
             if (!useTools && step.catchAgentError() && instance != null) {
-                subAgents.add(agentActionInvokeAgent(step.id(), stepResultKey, instance));
+                subAgents.add(agentActionInvokeAgent(step.id(), stepResultKey, step.agentRetryCount(), instance));
             } else {
                 var builder = AgenticServices.agentBuilder(agentClass)
                         .chatModel(chatModel)
@@ -172,17 +172,28 @@ public class SkillWorkflowRunner {
 
     /**
      * 在 agentAction 内调用 SubAgent 实例并捕获异常，写入 stepResultKey。
+     * 当 agentRetryCount &gt; 0 时，失败后会重试至多 agentRetryCount 次（总尝试次数 = 1 + agentRetryCount）。
      */
-    private Object agentActionInvokeAgent(String stepId, String stepResultKey, SubAgent instance) {
+    private Object agentActionInvokeAgent(String stepId, String stepResultKey, int agentRetryCount, SubAgent instance) {
         return AgenticServices.agentAction(scope -> {
             String input = String.valueOf(scope.readState(Agentic311Constants.ScopeKeys.CURRENT_STEP_INPUT, ""));
-            try {
-                String result = instance.execute(input);
-                scope.writeState(stepResultKey, result != null ? result : "");
-            } catch (Exception e) {
-                log.warn("Step agent failed, catch and continue: stepId={}", stepId, e);
-                scope.writeState(stepResultKey, formatErrorPayload(stepId, e));
+            int maxAttempts = 1 + Math.max(0, agentRetryCount);
+            Exception lastException = null;
+            for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+                try {
+                    String result = instance.execute(input);
+                    scope.writeState(stepResultKey, result != null ? result : "");
+                    return;
+                } catch (Exception e) {
+                    lastException = e;
+                    if (attempt < maxAttempts) {
+                        log.warn("Step agent attempt {}/{} failed, retrying: stepId={}", attempt, maxAttempts, stepId, e);
+                    } else {
+                        log.warn("Step agent failed after {} attempt(s): stepId={}", maxAttempts, stepId, e);
+                    }
+                }
             }
+            scope.writeState(stepResultKey, formatErrorPayload(stepId, lastException != null ? lastException : new RuntimeException("unknown")));
         });
     }
 
